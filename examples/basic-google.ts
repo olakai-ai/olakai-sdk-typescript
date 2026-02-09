@@ -43,11 +43,9 @@ async function main() {
   // All metadata is automatically captured and sent to Olakai!
   console.log("\nMaking Google Generative AI call...\n");
 
-  // Get a generative model
-  const model = trackedGenAI.getGenerativeModel({ model: "gemini-pro" });
-
   // Example 1: Simple generateContent call
-  const result = await model.generateContent({
+  const result = await trackedGenAI.models.generateContent({
+    model: "gemini-2.0-flash",
     contents: [
       {
         role: "user",
@@ -58,30 +56,23 @@ async function main() {
         ],
       },
     ],
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 500,
-    },
   });
 
-  const response = result.response;
-  const text = response.text();
+  const text = result.text;
   console.log("Response:", text);
 
   console.log("\nAPI call completed!");
   console.log("Automatically tracked:");
-  console.log(`   - Model: gemini-pro`);
-  if (response.usageMetadata) {
-    console.log(`   - Total tokens: ${response.usageMetadata.totalTokenCount}`);
+  console.log(`   - Model: gemini-2.0-flash`);
+  if (result.usageMetadata) {
+    console.log(`   - Total tokens: ${result.usageMetadata.totalTokenCount}`);
+    console.log(`   - Prompt tokens: ${result.usageMetadata.promptTokenCount}`);
     console.log(
-      `   - Prompt tokens: ${response.usageMetadata.promptTokenCount}`,
-    );
-    console.log(
-      `   - Completion tokens: ${response.usageMetadata.candidatesTokenCount}`,
+      `   - Completion tokens: ${result.usageMetadata.candidatesTokenCount}`,
     );
   }
-  if (response.candidates?.[0]?.finishReason) {
-    console.log(`   - Finish reason: ${response.candidates[0].finishReason}`);
+  if (result.candidates?.[0]?.finishReason) {
+    console.log(`   - Finish reason: ${result.candidates[0].finishReason}`);
   }
   console.log("   - API key: [captured for cost tracking]");
   console.log("   - Request timing: [auto-calculated]");

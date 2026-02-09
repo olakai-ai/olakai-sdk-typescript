@@ -112,7 +112,11 @@ export class GoogleProvider extends BaseLLMProvider {
 
         // Send to Olakai monitoring
         if (typeof (self as any).onLLMCall === "function") {
-          (self as any).onLLMCall(request.contents, response.text, metadata);
+          const prompt =
+            typeof request.contents === "string"
+              ? request.contents
+              : JSON.stringify(request.contents);
+          (self as any).onLLMCall(prompt, response.text, metadata);
         }
 
         return response;
