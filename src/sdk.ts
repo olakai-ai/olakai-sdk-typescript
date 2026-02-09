@@ -280,6 +280,7 @@ export class OlakaiSDK {
       response: toJsonValue(response),
       email: config.defaultContext?.userEmail,
       chatId: this.sessionId,
+      taskExecutionId: config.defaultContext?.taskExecutionId,
       task: config.defaultContext?.task,
       subTask: config.defaultContext?.subTask,
       tokens: metadata.tokens?.total,
@@ -327,6 +328,7 @@ export class OlakaiSDK {
     olakaiLogger(`Sending event: ${JSON.stringify(params)}`, "info", this.config.debug);
     this.report(params.prompt, params.response, {
       email: params.userEmail,
+      taskExecutionId: params.taskExecutionId,
       task: params.task,
       subTask: params.subTask,
       tokens: params.tokens,
@@ -351,6 +353,7 @@ export class OlakaiSDK {
     response: any,
     options?: {
       email?: string;
+      taskExecutionId?: string;
       task?: string;
       subTask?: string;
       tokens?: number;
@@ -367,6 +370,7 @@ export class OlakaiSDK {
         response: toJsonValue(response, options?.sanitize),
         email: options?.email || "anonymous@olakai.ai",
         chatId: this.sessionId,
+        taskExecutionId: options?.taskExecutionId,
         task: options?.task,
         subTask: options?.subTask,
         tokens: options?.tokens || 0,

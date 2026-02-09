@@ -4,6 +4,7 @@ export type OlakaiEventParams = {
   userEmail?: string;
   userId?: string; // SDK client's user ID for tracking
   chatId?: string; // UUID - groups activities together in Olakai
+  taskExecutionId?: string; // Groups prompt requests by task execution
   task?: string;
   subTask?: string;
   tokens?: number;
@@ -16,6 +17,7 @@ export type MonitorPayload = {
   email?: string;
   userId?: string; // SDK client's user ID for tracking
   chatId?: string;
+  taskExecutionId?: string; // Groups prompt requests by task execution
   task?: string;
   subTask?: string;
   prompt: JsonValue;
@@ -100,6 +102,7 @@ export type MonitorOptions<TArgs extends any[], TResult> = {
   // Dynamic chat and user identification
   chatId?: string | ((args: TArgs) => string);
   email?: string | ((args: TArgs) => string);
+  taskExecutionId?: string; // Groups prompt requests by task execution
   task?: string;
   subTask?: string;
   sanitize?: boolean; // Whether to sanitize sensitive data
@@ -181,6 +184,7 @@ export type LLMWrapperConfig = {
     userEmail?: string;
     userId?: string; // SDK client's user ID for tracking
     chatId?: string;
+    taskExecutionId?: string; // Groups prompt requests by task execution
     task?: string;
     subTask?: string;
     customData?: Record<string, string | number | boolean | undefined>;
@@ -203,6 +207,7 @@ export type VercelAIContext = {
   userEmail?: string;
   userId?: string; // SDK client's user ID for tracking
   chatId?: string;
+  taskExecutionId?: string; // Groups prompt requests by task execution
   task?: string;
   subTask?: string;
   apiKey?: string; // Provider API key for cost tracking
