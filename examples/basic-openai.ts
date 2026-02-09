@@ -59,7 +59,7 @@ async function main() {
     max_tokens: 500
   });
 
-  const result = response.choices[0].message.content;
+  const result = response.choices[0]?.message.content;
   console.log('🤖 Response:', result);
 
   console.log('\n✅ API call completed!');
@@ -68,7 +68,7 @@ async function main() {
   console.log(`   - Tokens: ${response.usage?.total_tokens}`);
   console.log(`   - Prompt tokens: ${response.usage?.prompt_tokens}`);
   console.log(`   - Completion tokens: ${response.usage?.completion_tokens}`);
-  console.log(`   - Finish reason: ${response.choices[0].finish_reason}`);
+  console.log(`   - Finish reason: ${response.choices[0]?.finish_reason}`);
   console.log('   - API key: [captured for cost tracking]');
   console.log('   - Request timing: [auto-calculated]');
   console.log('   - All parameters (temperature, max_tokens, etc.)');

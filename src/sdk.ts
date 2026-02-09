@@ -15,6 +15,11 @@ import { sendToAPI, initClient } from "./client";
 import { createId, olakaiLogger, toJsonValue } from "./utils";
 import { OlakaiBlockedError } from "./exceptions";
 import packageJson from "../package.json";
+import {
+  AnthropicProvider,
+  BaseLLMProvider,
+  GoogleProvider,
+} from "./providers";
 
 /**
  * Main Olakai SDK class
@@ -92,27 +97,24 @@ export class OlakaiSDK {
    * @param config - Configuration for the wrapper
    * @returns Wrapped client with automatic tracking
    */
-  wrap<TClient = any>(
-    client: TClient,
-    config: LLMWrapperConfig,
-  ): TClient {
+  wrap<TClient = any>(client: TClient, config: LLMWrapperConfig): TClient {
     if (!this.initialized) {
-      throw new Error(
-        "[Olakai SDK] SDK not initialized. Call init() first.",
-      );
+      throw new Error("[Olakai SDK] SDK not initialized. Call init() first.");
     }
 
     // Select provider based on config
-    let provider: OpenAIProvider;
+    let provider: BaseLLMProvider;
 
     switch (config.provider) {
       case "openai":
         provider = new OpenAIProvider(config);
         break;
+      case "google":
+        provider = new GoogleProvider(config);
+        break;
       case "anthropic":
-        throw new Error(
-          "[Olakai SDK] Anthropic provider not yet implemented",
-        );
+        provider = new AnthropicProvider(config);
+        break;
       case "custom":
         throw new Error(
           "[Olakai SDK] Custom provider requires implementation",
@@ -125,19 +127,19 @@ export class OlakaiSDK {
 
     // Inject callbacks for monitoring
     (provider as any).onLLMCall = async (
-      request: any,
-      response: any,
+      prompt: string,
+      response: string,
       metadata: LLMMetadata,
     ) => {
-      await this.handleLLMCall(request, response, metadata, config);
+      await this.handleLLMCall(prompt, response, metadata, config);
     };
 
     (provider as any).onLLMError = async (
-      request: any,
+      prompt: string,
       error: any,
       metadata: LLMMetadata,
     ) => {
-      await this.handleLLMError(request, error, metadata, config);
+      await this.handleLLMError(prompt, error, metadata, config);
     };
 
     return provider.wrap(client);
@@ -147,16 +149,12 @@ export class OlakaiSDK {
    * Handle successful LLM call - check control and send monitoring
    */
   private async handleLLMCall(
-    request: any,
-    response: any,
+    prompt: string,
+    response: string,
     metadata: LLMMetadata,
     wrapperConfig: LLMWrapperConfig,
   ): Promise<void> {
     try {
-      // Extract prompt and response text
-      const prompt = this.extractPrompt(request);
-      const responseText = this.extractResponse(response);
-
       // Check Control API if enabled
       const enableControl = wrapperConfig.enableControl ?? this.config.enableControl;
       if (enableControl) {
@@ -166,7 +164,7 @@ export class OlakaiSDK {
       // Send to Monitoring API
       await this.sendMonitoring(
         prompt,
-        responseText,
+        response,
         metadata,
         wrapperConfig,
         false, // not blocked
@@ -188,13 +186,12 @@ export class OlakaiSDK {
    * Handle LLM error - send error monitoring
    */
   private async handleLLMError(
-    request: any,
+    prompt: string,
     error: any,
     metadata: LLMMetadata,
     wrapperConfig: LLMWrapperConfig,
   ): Promise<void> {
     try {
-      const prompt = this.extractPrompt(request);
       const errorMessage = error?.message || String(error);
 
       // Send error to monitoring
@@ -309,62 +306,6 @@ export class OlakaiSDK {
   }
 
   /**
-   * Extract prompt from request (works for chat and completion endpoints)
-   */
-  private extractPrompt(request: any): string {
-    try {
-      // Chat completion format
-      if (request.messages && Array.isArray(request.messages)) {
-        return request.messages
-          .map((msg: any) => {
-            const role = msg.role || "user";
-            const content = msg.content || "";
-            return `${role}: ${content}`;
-          })
-          .join("\n");
-      }
-
-      // Legacy completion format
-      if (request.prompt) {
-        return String(request.prompt);
-      }
-
-      return "Unable to extract prompt";
-    } catch (error) {
-      olakaiLogger(
-        `Error extracting prompt: ${error}`,
-        "error",
-      );
-      return "Error extracting prompt";
-    }
-  }
-
-  /**
-   * Extract response text from OpenAI response
-   */
-  private extractResponse(response: any): string {
-    try {
-      // Chat completion format
-      if (response.choices && response.choices[0]?.message?.content) {
-        return response.choices[0].message.content;
-      }
-
-      // Legacy completion format
-      if (response.choices && response.choices[0]?.text) {
-        return response.choices[0].text;
-      }
-
-      return "Unable to extract response";
-    } catch (error) {
-      olakaiLogger(
-        `Error extracting response: ${error}`,
-        "error",
-      );
-      return "Error extracting response";
-    }
-  }
-
-  /**
    * Get current configuration
    */
   getConfig(): EnhancedSDKConfig {
@@ -394,7 +335,7 @@ export class OlakaiSDK {
       customData: params.customData,
       sanitize: false, // Don't sanitize for event-based usage
     }).catch((error) => {
-        olakaiLogger(`Failed to track event: ${error}`, "error");
+      olakaiLogger(`Failed to track event: ${error}`, "error");
     });
   }
 

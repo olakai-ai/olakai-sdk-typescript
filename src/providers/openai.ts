@@ -141,9 +141,11 @@ export class OpenAIProvider extends BaseLLMProvider {
         );
 
         // Send to Olakai monitoring (handled by SDK class)
-        // This will be integrated in Phase 4
+        // Extract prompt and response strings before calling the callback
         if (typeof (self as any).onLLMCall === "function") {
-          (self as any).onLLMCall(request, response, metadata);
+          const prompt = self.extractPrompt(request);
+          const responseText = self.extractResponse(response);
+          (self as any).onLLMCall(prompt, responseText, metadata);
         }
 
         return response;
@@ -169,8 +171,10 @@ export class OpenAIProvider extends BaseLLMProvider {
         );
 
         // Send error to monitoring
+        // Extract prompt string before calling the callback
         if (typeof (self as any).onLLMError === "function") {
-          (self as any).onLLMError(request, error, errorMetadata);
+          const prompt = self.extractPrompt(request);
+          (self as any).onLLMError(prompt, error, errorMetadata);
         }
 
         throw error;
@@ -280,6 +284,62 @@ export class OpenAIProvider extends BaseLLMProvider {
         "error",
       );
       return undefined;
+    }
+  }
+
+  /**
+   * Extract prompt from OpenAI request (works for chat and completion endpoints)
+   */
+  extractPrompt(request: any): string {
+    try {
+      // Chat completion format
+      if (request.messages && Array.isArray(request.messages)) {
+        return request.messages
+          .map((msg: any) => {
+            const role = msg.role || "user";
+            const content = msg.content || "";
+            return `${role}: ${content}`;
+          })
+          .join("\n");
+      }
+
+      // Legacy completion format
+      if (request.prompt) {
+        return String(request.prompt);
+      }
+
+      return "Unable to extract prompt";
+    } catch (error) {
+      olakaiLogger(
+        `Error extracting prompt: ${error}`,
+        "error",
+      );
+      return "Error extracting prompt";
+    }
+  }
+
+  /**
+   * Extract response text from OpenAI response
+   */
+  extractResponse(response: any): string {
+    try {
+      // Chat completion format
+      if (response.choices && response.choices[0]?.message?.content) {
+        return response.choices[0].message.content;
+      }
+
+      // Legacy completion format
+      if (response.choices && response.choices[0]?.text) {
+        return response.choices[0].text;
+      }
+
+      return "Unable to extract response";
+    } catch (error) {
+      olakaiLogger(
+        `Error extracting response: ${error}`,
+        "error",
+      );
+      return "Error extracting response";
     }
   }
 }

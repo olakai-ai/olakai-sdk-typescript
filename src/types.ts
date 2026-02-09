@@ -140,7 +140,7 @@ export type JsonObject = { [key: string]: undefined | JsonValue };
 /**
  * LLM Provider types
  */
-export type LLMProvider = "openai" | "anthropic" | "custom";
+export type LLMProvider = "openai" | "anthropic" | "google" | "custom";
 
 /**
  * Metadata automatically extracted from LLM calls
