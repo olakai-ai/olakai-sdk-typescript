@@ -173,6 +173,7 @@ export function monitor<TArgs extends any[], TResult>(
           response: "",
           chatId: chatId,
           email: email,
+          taskExecutionId: options.taskExecutionId,
           task: options.task,
           subTask: options.subTask,
           blocked: true,
@@ -257,6 +258,7 @@ async function makeMonitoringCall<TArgs extends any[], TResult>(
     response: toJsonValue(result, options.sanitize),
     chatId: chatId,
     email: email,
+    taskExecutionId: options.taskExecutionId,
     tokens: 0,
     requestTime: Number(Date.now() - start),
     ...(options.task !== undefined && options.task !== ""
@@ -313,6 +315,7 @@ async function reportError<TArgs extends any[], TResult>(
           (errorInfo.stackTrace ? `\n${errorInfo.stackTrace}` : ""),
         chatId: chatId,
         email: email,
+        taskExecutionId: options.taskExecutionId,
         sensitivity: detectedSensitivity,
       };
 

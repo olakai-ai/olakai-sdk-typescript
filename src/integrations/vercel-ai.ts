@@ -450,6 +450,7 @@ export class VercelAIIntegration {
       response: toJsonValue(response),
       email: context.userEmail,
       chatId: context.chatId,
+      taskExecutionId: context.taskExecutionId,
       task: context.task,
       subTask: context.subTask,
       tokens: metadata.tokens?.total,
