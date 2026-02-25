@@ -2,8 +2,7 @@ export type OlakaiEventParams = {
   prompt: string;
   response: string;
   userEmail?: string;
-  userId?: string; // SDK client's user ID for tracking
-  chatId?: string; // UUID - groups activities together in Olakai
+  sessionId?: string; // Groups activities into a session/conversation — maps to chatId on the wire
   taskExecutionId?: string; // Groups prompt requests by task execution
   task?: string;
   subTask?: string;
