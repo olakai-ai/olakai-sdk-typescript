@@ -38,6 +38,7 @@ export class OlakaiSDK {
     monitoringEndpoint?: string;
     controlEndpoint?: string;
     enableControl?: boolean;
+    sessionId?: string;
     retries?: number;
     timeout?: number;
     debug?: boolean;
@@ -68,7 +69,7 @@ export class OlakaiSDK {
       debug: this.config.debug,
     });
 
-    this.sessionId = createId();
+    this.sessionId = config.sessionId ?? createId();
   }
 
   /**
@@ -328,6 +329,7 @@ export class OlakaiSDK {
     olakaiLogger(`Sending event: ${JSON.stringify(params)}`, "info", this.config.debug);
     this.report(params.prompt, params.response, {
       email: params.userEmail,
+      sessionId: params.sessionId,
       taskExecutionId: params.taskExecutionId,
       task: params.task,
       subTask: params.subTask,
@@ -353,6 +355,7 @@ export class OlakaiSDK {
     response: any,
     options?: {
       email?: string;
+      sessionId?: string;
       taskExecutionId?: string;
       task?: string;
       subTask?: string;
@@ -369,7 +372,7 @@ export class OlakaiSDK {
         prompt: toJsonValue(prompt, options?.sanitize),
         response: toJsonValue(response, options?.sanitize),
         email: options?.email || "anonymous@olakai.ai",
-        chatId: this.sessionId,
+        chatId: options?.sessionId ?? this.sessionId,
         taskExecutionId: options?.taskExecutionId,
         task: options?.task,
         subTask: options?.subTask,
