@@ -286,6 +286,7 @@ export class OlakaiSDK {
       subTask: config.defaultContext?.subTask,
       tokens: metadata.tokens?.total,
       requestTime: metadata.timing?.duration,
+      modelName: metadata.model,
       blocked,
       errorMessage,
       llmMetadata: metadata,
@@ -336,6 +337,7 @@ export class OlakaiSDK {
       tokens: params.tokens,
       requestTime: params.requestTime,
       shouldScore: params.shouldScore,
+      modelName: params.modelName,
       customData: params.customData,
       sanitize: false, // Don't sanitize for event-based usage
     }).catch((error) => {
@@ -362,6 +364,7 @@ export class OlakaiSDK {
       tokens?: number;
       requestTime?: number;
       shouldScore?: boolean;
+      modelName?: string;
       sanitize?: boolean;
       priority?: "low" | "normal" | "high";
       customData?: Record<string, string | number | boolean | undefined>;
@@ -381,6 +384,7 @@ export class OlakaiSDK {
         blocked: false,
         sensitivity: [],
         shouldScore: options?.shouldScore,
+        ...(options?.modelName ? { modelName: options.modelName } : {}),
         customData: options?.customData,
       };
 

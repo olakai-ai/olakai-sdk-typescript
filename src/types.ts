@@ -9,6 +9,7 @@ export type OlakaiEventParams = {
   tokens?: number;
   requestTime?: number;
   shouldScore?: boolean; // Whether to score this activity
+  modelName?: string; // LLM model name (e.g., "gpt-4o", "claude-sonnet-4-20250514")
   customData?: Record<string, string | number | boolean | undefined>;
 };
 
@@ -27,6 +28,7 @@ export type MonitorPayload = {
   blocked?: boolean;
   sensitivity?: string[];
   shouldScore?: boolean;
+  modelName?: string; // LLM model name (e.g., "gpt-4o", "claude-sonnet-4-20250514")
   customData?: Record<string, string | number | boolean | undefined>;
 };
 
@@ -104,6 +106,8 @@ export type MonitorOptions<TArgs extends any[], TResult> = {
   taskExecutionId?: string; // Groups prompt requests by task execution
   task?: string;
   subTask?: string;
+  tokens?: number; // Token count for the LLM call
+  modelName?: string; // LLM model name (e.g., "gpt-4o", "claude-sonnet-4-20250514")
   sanitize?: boolean; // Whether to sanitize sensitive data
   priority?: "low" | "normal" | "high"; // Priority for batching
   askOverride?: string[]; // List of parameters to override the control check

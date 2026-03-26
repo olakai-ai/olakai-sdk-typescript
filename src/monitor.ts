@@ -259,7 +259,7 @@ async function makeMonitoringCall<TArgs extends any[], TResult>(
     chatId: chatId,
     email: email,
     taskExecutionId: options.taskExecutionId,
-    tokens: 0,
+    tokens: options.tokens ?? 0,
     requestTime: Number(Date.now() - start),
     ...(options.task !== undefined && options.task !== ""
       ? { task: options.task }
@@ -267,6 +267,7 @@ async function makeMonitoringCall<TArgs extends any[], TResult>(
     ...(options.subTask !== undefined && options.subTask !== ""
       ? { subTask: options.subTask }
       : {}),
+    ...(options.modelName ? { modelName: options.modelName } : {}),
     blocked: false,
     sensitivity: detectedSensitivity,
   };
