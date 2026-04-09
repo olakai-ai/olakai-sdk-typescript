@@ -13,6 +13,30 @@ export type OlakaiEventParams = {
   customData?: Record<string, string | number | boolean | undefined>;
 };
 
+/**
+ * Parameters for reporting explicit user feedback on a prior agent interaction.
+ *
+ * Use this when your end user gives an explicit rating (thumbs up/down) on
+ * an assistant response. Feedback is correlated with the original interaction
+ * via `sessionId` — and optionally `turnIndex` — so the analytics layer can
+ * slice feedback by the turn it applies to.
+ */
+export type OlakaiFeedbackParams = {
+  /** Session/conversation ID of the interaction being rated. Must match
+   *  the `sessionId` used when reporting the original event. */
+  sessionId: string;
+  /** The rating itself. */
+  rating: "UP" | "DOWN";
+  /** Optional zero-based turn index within the session for turn-level correlation. */
+  turnIndex?: number;
+  /** Optional free-text comment alongside the rating. */
+  comment?: string;
+  /** Optional override for the user who gave the feedback. */
+  userEmail?: string;
+  /** Optional customer-defined fields for domain context. */
+  customData?: Record<string, string | number | boolean | undefined>;
+};
+
 export type MonitorPayload = {
   email?: string;
   userId?: string; // SDK client's user ID for tracking
