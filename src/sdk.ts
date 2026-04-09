@@ -398,6 +398,9 @@ export class OlakaiSDK {
       email: params.userEmail,
       sessionId: params.sessionId,
       customData: mergedCustomData,
+      // Feedback events are metadata about a prior interaction, not a
+      // new interaction to evaluate — skip scoring.
+      shouldScore: false,
       sanitize: false,
     }).catch((error) => {
       olakaiLogger(`Failed to send feedback: ${error}`, "error");
