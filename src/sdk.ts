@@ -8,6 +8,7 @@ import type {
   ControlAPIResponse,
   VercelAIContext,
   OlakaiEventParams,
+  OlakaiFeedbackParams,
 } from "./types";
 import { OpenAIProvider } from "./providers/openai";
 import { VercelAIIntegration } from "./integrations/vercel-ai";
@@ -342,6 +343,67 @@ export class OlakaiSDK {
       sanitize: false, // Don't sanitize for event-based usage
     }).catch((error) => {
       olakaiLogger(`Failed to track event: ${error}`, "error");
+    });
+  }
+
+  /**
+   * Report explicit user feedback on a prior agent interaction.
+   *
+   * Fire-and-forget, same pattern as {@link event}. Never throws — feedback
+   * failures must not break the host application.
+   *
+   * Feedback is correlated with the original interaction via `sessionId`
+   * (and optionally `turnIndex`), so the analytics layer can slice feedback
+   * by the conversation and turn it applies to. Under the hood, this emits
+   * a feedback event with well-known `customData` keys that the Olakai
+   * platform recognizes — no extra correlation work required on your side.
+   *
+   * @param params - Feedback parameters
+   *
+   * @example
+   * ```typescript
+   * // User clicks thumbs up on the assistant response at turn 3
+   * olakai.feedback({
+   *   sessionId: conversationId,
+   *   turnIndex: 3,
+   *   rating: "UP",
+   *   comment: "Very helpful answer",
+   * });
+   * ```
+   */
+  feedback(params: OlakaiFeedbackParams): void {
+    if (!this.initialized) {
+      olakaiLogger("SDK not initialized. Call init() first.", "warn");
+      return;
+    }
+
+    // Merge well-known feedback fields into customData. User-provided
+    // customData wins ties only for unknown keys — we intentionally do
+    // not let callers override the feedback markers.
+    const mergedCustomData: Record<string, string | number | boolean | undefined> = {
+      ...(params.customData ?? {}),
+      eventType: "feedback",
+      feedbackRating: params.rating,
+      ...(params.turnIndex !== undefined && { feedbackTurnIndex: params.turnIndex }),
+      ...(params.comment !== undefined && { feedbackComment: params.comment }),
+    };
+
+    olakaiLogger(
+      `Sending feedback: ${JSON.stringify({ sessionId: params.sessionId, rating: params.rating, turnIndex: params.turnIndex })}`,
+      "info",
+      this.config.debug,
+    );
+
+    this.report("[feedback]", "", {
+      email: params.userEmail,
+      sessionId: params.sessionId,
+      customData: mergedCustomData,
+      // Feedback events are metadata about a prior interaction, not a
+      // new interaction to evaluate — skip scoring.
+      shouldScore: false,
+      sanitize: false,
+    }).catch((error) => {
+      olakaiLogger(`Failed to send feedback: ${error}`, "error");
     });
   }
 

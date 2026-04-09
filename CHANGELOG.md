@@ -5,6 +5,28 @@ All notable changes to the Olakai SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-04-09
+
+### Added
+
+- **`OlakaiSDK.feedback()`** — New public method for reporting explicit user feedback on a prior agent interaction. Fire-and-forget, like `event()`.
+  - Parameters: `sessionId`, `rating: "UP" | "DOWN"`, and optional `turnIndex`, `comment`, `userEmail`, `customData`
+  - Correlates with the original interaction via `sessionId` (+ optional `turnIndex`)
+  - Emits a feedback event with well-known `customData` keys the Olakai platform recognizes — no extra correlation work required
+- **`OlakaiFeedbackParams`** type exported alongside other event types
+
+### Example
+
+```typescript
+// Report when the end user clicks thumbs up on an assistant response
+olakai.feedback({
+  sessionId: conversationId,
+  turnIndex: 3,
+  rating: "UP",
+  comment: "Very helpful answer",
+});
+```
+
 ## [2.0.0] - 2025-01-07
 
 ### Changed
