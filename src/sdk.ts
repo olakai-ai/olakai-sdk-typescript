@@ -9,6 +9,7 @@ import type {
   VercelAIContext,
   OlakaiEventParams,
   OlakaiFeedbackParams,
+  FeedbackPayload,
 } from "./types";
 import { OpenAIProvider } from "./providers/openai";
 import { VercelAIIntegration } from "./integrations/vercel-ai";
@@ -56,6 +57,7 @@ export class OlakaiSDK {
         config.monitoringEndpoint || `${domainUrl}/api/monitoring/prompt`,
       controlEndpoint:
         config.controlEndpoint || `${domainUrl}/api/control/prompt`,
+      feedbackEndpoint: `${domainUrl}/api/monitoring/feedback`,
       enableControl: config.enableControl ?? false, // Default: disabled
       retries: config.retries ?? 4,
       timeout: config.timeout ?? 30000,
@@ -353,10 +355,9 @@ export class OlakaiSDK {
    * failures must not break the host application.
    *
    * Feedback is correlated with the original interaction via `sessionId`
-   * (and optionally `turnIndex`), so the analytics layer can slice feedback
-   * by the conversation and turn it applies to. Under the hood, this emits
-   * a feedback event with well-known `customData` keys that the Olakai
-   * platform recognizes — no extra correlation work required on your side.
+   * (and optionally `turnIndex`). Since v2.5.0 feedback is POSTed to a
+   * dedicated `/api/monitoring/feedback` endpoint — it no longer creates
+   * a synthetic PromptRequest row or pollutes `customData`.
    *
    * @param params - Feedback parameters
    *
@@ -377,15 +378,12 @@ export class OlakaiSDK {
       return;
     }
 
-    // Merge well-known feedback fields into customData. User-provided
-    // customData wins ties only for unknown keys — we intentionally do
-    // not let callers override the feedback markers.
-    const mergedCustomData: Record<string, string | number | boolean | undefined> = {
-      ...(params.customData ?? {}),
-      eventType: "feedback",
-      feedbackRating: params.rating,
-      ...(params.turnIndex !== undefined && { feedbackTurnIndex: params.turnIndex }),
-      ...(params.comment !== undefined && { feedbackComment: params.comment }),
+    const payload: FeedbackPayload = {
+      sessionId: params.sessionId,
+      rating: params.rating,
+      ...(params.turnIndex !== undefined && { turnIndex: params.turnIndex }),
+      ...(params.comment !== undefined && { comment: params.comment }),
+      ...(params.userEmail && { email: params.userEmail }),
     };
 
     olakaiLogger(
@@ -394,15 +392,9 @@ export class OlakaiSDK {
       this.config.debug,
     );
 
-    this.report("[feedback]", "", {
-      email: params.userEmail,
-      sessionId: params.sessionId,
-      customData: mergedCustomData,
-      // Feedback events are metadata about a prior interaction, not a
-      // new interaction to evaluate — skip scoring.
-      shouldScore: false,
-      sanitize: false,
-    }).catch((error) => {
+    // Fire-and-forget POST to the dedicated feedback endpoint.
+    // Never throws — feedback failures must not break the host application.
+    sendToAPI(payload, "feedback").catch((error) => {
       olakaiLogger(`Failed to send feedback: ${error}`, "error");
     });
   }

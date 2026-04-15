@@ -63,11 +63,25 @@ export type SDKConfig = {
   apiKey: string;
   monitorEndpoint: string;
   controlEndpoint: string;
+  feedbackEndpoint?: string;
   version: string;
   retries: number;
   timeout: number;
   debug: boolean;
   verbose: boolean;
+};
+
+/**
+ * Internal wire payload for the dedicated feedback endpoint
+ * (`/api/monitoring/feedback`). Not part of the public API — callers use
+ * {@link OlakaiFeedbackParams} with `OlakaiSDK.feedback()`.
+ */
+export type FeedbackPayload = {
+  sessionId: string;
+  rating: "UP" | "DOWN";
+  turnIndex?: number;
+  comment?: string;
+  email?: string;
 };
 
 /**

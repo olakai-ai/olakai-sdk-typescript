@@ -5,6 +5,22 @@ All notable changes to the Olakai SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-04-14
+
+### Changed
+
+- **`OlakaiSDK.feedback()` now posts to the dedicated `/api/monitoring/feedback` endpoint** instead of `/api/monitoring/prompt`.
+  - Public API (`olakai.feedback({...})` signature) is **unchanged** — this is a transparent upgrade for callers.
+  - Feedback events no longer create `PromptRequest` rows on the server; they are stored directly as `UserFeedback` records and correlated via `sessionId` (+ optional `turnIndex`).
+  - Wire payload is now a clean `{ sessionId, rating, turnIndex?, comment?, email? }` — the `[feedback]` sentinel prompt and `customData.eventType === "feedback"` markers are gone.
+  - Still fire-and-forget and never throws.
+- Added `feedbackEndpoint` to `SDKConfig` (derived automatically from the base domain — callers do not need to configure it). The field is optional on `SDKConfig`; when unset at call-time, it is derived from `monitorEndpoint` by swapping `/prompt` → `/feedback` for backward compatibility with manually-constructed configs.
+- `params.customData` passed to `feedback()` is no longer forwarded over the wire. It was never part of the documented feedback contract, but callers relying on the old prompt-shaped payload should be aware it is now dropped.
+
+### Migration
+
+No code changes required for existing `olakai.feedback({...})` callers. Upgrade to 2.5.0 to stop polluting PromptRequest rows with feedback events.
+
 ## [2.4.0] - 2026-04-09
 
 ### Added

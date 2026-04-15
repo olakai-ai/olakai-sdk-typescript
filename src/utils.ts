@@ -80,6 +80,11 @@ export class ConfigBuilder {
     return this;
   }
 
+  feedbackEndpoint(url: string): ConfigBuilder {
+    this.config.feedbackEndpoint = url;
+    return this;
+  }
+
   version(v: string): ConfigBuilder {
     this.config.version = v;
     return this;
@@ -115,6 +120,7 @@ export class ConfigBuilder {
       apiKey: "",
       monitorEndpoint: "",
       controlEndpoint: "",
+      feedbackEndpoint: "",
       version: "",
       retries: 3,
       timeout: 10000,
