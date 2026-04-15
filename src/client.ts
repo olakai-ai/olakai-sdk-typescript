@@ -4,6 +4,7 @@ import type {
   MonitoringAPIResponse,
   ControlPayload,
   ControlAPIResponse,
+  FeedbackPayload,
 } from "./types";
 import packageJson from "../package.json";
 import { ConfigBuilder, olakaiLogger, sleep } from "./utils";
@@ -43,6 +44,7 @@ export async function initClient(
   configBuilder.apiKey(apiKey);
   configBuilder.monitorEndpoint(`${domainUrl}/api/monitoring/prompt`);
   configBuilder.controlEndpoint(`${domainUrl}/api/control/prompt`);
+  configBuilder.feedbackEndpoint(`${domainUrl}/api/monitoring/feedback`);
   configBuilder.retries(options.retries || 4);
   configBuilder.timeout(options.timeout || 30000);
   configBuilder.version(options.version || packageJson.version);
@@ -99,9 +101,9 @@ export function getConfig(): SDKConfig {
  * @throws {Error} if the internal logic fails
  */
 async function makeAPICall(
-  payload: MonitorPayload[] | ControlPayload,
-  role: "monitoring" | "control" = "monitoring",
-): Promise<MonitoringAPIResponse | ControlAPIResponse> {
+  payload: MonitorPayload[] | ControlPayload | FeedbackPayload,
+  role: "monitoring" | "control" | "feedback" = "monitoring",
+): Promise<MonitoringAPIResponse | ControlAPIResponse | void> {
   if (!config.apiKey) {
     throw new APIKeyMissingError("[Olakai SDK] API key is not set");
   }
@@ -114,6 +116,8 @@ async function makeAPICall(
     url = config.monitorEndpoint;
   } else if (role === "control") {
     url = config.controlEndpoint;
+  } else if (role === "feedback") {
+    url = config.feedbackEndpoint;
   }
 
   olakaiLogger(`Making API call to ${role} endpoint: ${url}`, "info", config.debug);
@@ -128,6 +132,19 @@ async function makeAPICall(
       signal: controller.signal,
     });
     olakaiLogger(`API call response: ${response.status}`, "info", config.debug);
+
+    if (role === "feedback") {
+      clearTimeout(timeoutId);
+      if (!response.ok) {
+        olakaiLogger(
+          `Feedback endpoint returned non-OK status: ${response.status}`,
+          "warn",
+        );
+        throw new HTTPError(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return;
+    }
+
     let responseData: MonitoringAPIResponse | ControlAPIResponse = {} as
       | MonitoringAPIResponse
       | ControlAPIResponse;
@@ -203,10 +220,10 @@ async function makeAPICall(
  * @returns A promise that resolves to an object with success status
  */
 async function sendWithRetry(
-  payload: MonitorPayload[] | ControlPayload,
+  payload: MonitorPayload[] | ControlPayload | FeedbackPayload,
   maxRetries: number = config.retries!,
-  role: "monitoring" | "control" = "monitoring",
-): Promise<MonitoringAPIResponse | ControlAPIResponse> {
+  role: "monitoring" | "control" | "feedback" = "monitoring",
+): Promise<MonitoringAPIResponse | ControlAPIResponse | void> {
   let lastError: Error | null = null;
   let response: MonitoringAPIResponse | ControlAPIResponse = {} as
     | MonitoringAPIResponse
@@ -224,7 +241,7 @@ async function sendWithRetry(
         } else if (response.failureCount && response.failureCount > 0) {
           olakaiLogger(
             `Request partial success: ${response.successCount}/${response.totalRequests} requests succeeded`,
-            "info", 
+            "info",
             config.debug,
           );
           return response;
@@ -235,6 +252,9 @@ async function sendWithRetry(
           "control",
         )) as ControlAPIResponse;
         return response;
+      } else if (role === "feedback") {
+        await makeAPICall(payload, "feedback");
+        return;
       }
     } catch (err) {
       lastError = err as Error;
@@ -267,11 +287,25 @@ async function sendWithRetry(
  * @returns A promise that resolves when the payload is sent
  */
 export async function sendToAPI(
-  payload: MonitorPayload | ControlPayload,
-  role: "monitoring" | "control" = "monitoring",
+  payload: MonitorPayload | ControlPayload | FeedbackPayload,
+  role: "monitoring" | "control" | "feedback" = "monitoring",
 ): Promise<ControlAPIResponse | void> {
   if (!config.apiKey) {
     throw new APIKeyMissingError("[Olakai SDK] API key is not set");
+  }
+
+  if (role === "feedback") {
+    try {
+      await sendWithRetry(
+        payload as FeedbackPayload,
+        config.retries!,
+        "feedback",
+      );
+    } catch (error) {
+      olakaiLogger(`Error during feedback API call: ${error}`, "error");
+      throw error;
+    }
+    return;
   }
 
   if (role === "monitoring") {
