@@ -117,7 +117,18 @@ async function makeAPICall(
   } else if (role === "control") {
     url = config.controlEndpoint;
   } else if (role === "feedback") {
-    url = config.feedbackEndpoint;
+    if (config.feedbackEndpoint) {
+      url = config.feedbackEndpoint;
+    } else {
+      // Backward-compat safety net: older callers may construct SDKConfig
+      // manually without setting feedbackEndpoint. Derive it from the
+      // monitoring endpoint (same host, swap the trailing path segment).
+      url = config.monitorEndpoint.replace(/\/prompt(\/?$)/, "/feedback$1");
+      olakaiLogger(
+        `feedbackEndpoint not configured; derived from monitorEndpoint: ${url}`,
+        "warn",
+      );
+    }
   }
 
   olakaiLogger(`Making API call to ${role} endpoint: ${url}`, "info", config.debug);

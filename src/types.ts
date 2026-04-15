@@ -63,7 +63,7 @@ export type SDKConfig = {
   apiKey: string;
   monitorEndpoint: string;
   controlEndpoint: string;
-  feedbackEndpoint: string;
+  feedbackEndpoint?: string;
   version: string;
   retries: number;
   timeout: number;

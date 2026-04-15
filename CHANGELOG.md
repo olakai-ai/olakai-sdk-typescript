@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Feedback events no longer create `PromptRequest` rows on the server; they are stored directly as `UserFeedback` records and correlated via `sessionId` (+ optional `turnIndex`).
   - Wire payload is now a clean `{ sessionId, rating, turnIndex?, comment?, email? }` — the `[feedback]` sentinel prompt and `customData.eventType === "feedback"` markers are gone.
   - Still fire-and-forget and never throws.
-- Added `feedbackEndpoint` to `SDKConfig` (derived automatically from the base domain — callers do not need to configure it).
+- Added `feedbackEndpoint` to `SDKConfig` (derived automatically from the base domain — callers do not need to configure it). The field is optional on `SDKConfig`; when unset at call-time, it is derived from `monitorEndpoint` by swapping `/prompt` → `/feedback` for backward compatibility with manually-constructed configs.
+- `params.customData` passed to `feedback()` is no longer forwarded over the wire. It was never part of the documented feedback contract, but callers relying on the old prompt-shaped payload should be aware it is now dropped.
 
 ### Migration
 
