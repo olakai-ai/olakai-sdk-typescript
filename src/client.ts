@@ -31,16 +31,34 @@ export function readOlakaiHostEnv(): string | undefined {
 }
 
 /**
+ * Loopback hostnames default to http:// because local Olakai dev servers
+ * (e.g. `pnpm dev` on `localhost:3000`) don't usually have TLS.
+ * Match `localhost`, `127.0.0.1`, or IPv6 `[::1]`, with an optional port.
+ */
+const LOOPBACK_HOST_REGEX = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+
+/**
  * Resolve the base origin URL the SDK should call.
  * Precedence: explicit `host` (or full base URL) → `OLAKAI_HOST` env → DEFAULT_HOST.
  * Accepts a bare hostname ("olakai.acme.com") or a full URL ("https://olakai.acme.com");
  * trailing slashes are stripped. `URL` is used to parse explicit values so that paths
  * and query strings are dropped — only the origin is kept.
+ *
+ * Bare hostnames are assumed to be `https://`, except loopback hosts
+ * (`localhost`, `127.0.0.1`, `[::1]`, with optional port) which default to
+ * `http://` for local-dev convenience. Pass an explicit `https://` prefix to
+ * override.
  */
 export function resolveOriginUrl(explicit?: string): string {
   const raw = explicit || readOlakaiHostEnv() || DEFAULT_HOST;
-  // Bare hostname → prepend https://. URL parsing requires a scheme.
-  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  let withScheme: string;
+  if (/^https?:\/\//i.test(raw)) {
+    withScheme = raw;
+  } else if (LOOPBACK_HOST_REGEX.test(raw)) {
+    withScheme = `http://${raw}`;
+  } else {
+    withScheme = `https://${raw}`;
+  }
   try {
     return new URL(withScheme).origin;
   } catch {
