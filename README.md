@@ -34,7 +34,8 @@ import { olakaiConfig } from "@olakai/sdk";
 // Initialize once in your app
 olakaiConfig({
   apiKey: "your-olakai-api-key",
-  // endpoint is optional, defaults to https://app.olakai.ai
+  // host is optional, defaults to "app.olakai.ai".
+  // For on-prem, set the `OLAKAI_HOST` env var or pass `host` explicitly.
   debug: false, // Set to true for development
 });
 ```
@@ -150,7 +151,8 @@ Initialize the SDK with your configuration.
 ```typescript
 olakaiConfig({
   apiKey: string;        // Required: Your Olakai API key
-  endpoint?: string;     // Optional: API endpoint (default: https://app.olakai.ai)
+  host?: string;         // Optional: hostname (default: "app.olakai.ai").
+                         // For on-prem, set `OLAKAI_HOST` env var or pass explicitly.
   debug?: boolean;       // Optional: Enable debug logging (default: false)
 });
 ```
@@ -334,7 +336,7 @@ try {
 **"Events not being tracked"**
 
 - Ensure `olakaiConfig()` was called first
-- Check your API key and endpoint URL
+- Check your API key and host (default: `app.olakai.ai`; on-prem deployments should set `OLAKAI_HOST`)
 - Enable debug mode to see detailed logs
 
 **"TypeScript errors"**

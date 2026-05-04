@@ -106,10 +106,22 @@ Re-exports all public APIs from `src/`:
 ### Configuration Pattern
 The SDK uses a singleton config initialized via `initClient()` or `olakaiConfig()`. The config includes:
 - API key (required)
-- Endpoints for monitoring and control (required)
+- Endpoints for monitoring, control, and feedback (derived from host; see below)
 - Retries (default: 4)
 - Timeout (default: 30000ms)
 - Debug/verbose flags
+
+### Host Resolution (on-prem support)
+Both `OlakaiSDK` (constructor) and `initClient()` resolve the target host with this precedence:
+1. **Explicit option** — `host` on `OlakaiSDK`, `domainUrl` on `initClient`
+2. **`OLAKAI_HOST` env var** — for on-prem deployments (e.g. `olakai.acme.com`)
+3. **Default** — `app.olakai.ai` (SaaS)
+
+The resolved host is used to derive `monitorEndpoint`, `controlEndpoint`, and
+`feedbackEndpoint` in one place. `process.env` access is guarded so the SDK still
+works in browsers. Full-URL overrides (`monitoringEndpoint` / `controlEndpoint`)
+remain supported and take precedence when provided — use them only when each
+endpoint must point at a different URL.
 
 ### Type Safety
 - The SDK uses strict TypeScript with `strict: true` in tsconfig.json`

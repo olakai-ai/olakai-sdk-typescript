@@ -36,9 +36,9 @@ import { OlakaiSDK } from '@olakai/sdk';
 import OpenAI from 'openai';
 
 // 1. Initialize Olakai SDK
+//    `host` defaults to "app.olakai.ai"; for on-prem set OLAKAI_HOST or pass `host`.
 const olakai = new OlakaiSDK({
-  apiKey: 'your-olakai-api-key',
-  monitoringEndpoint: 'https://app.olakai.ai/api/monitoring/prompt'
+  apiKey: 'your-olakai-api-key'
 });
 await olakai.init();
 
@@ -91,10 +91,18 @@ When you wrap an LLM client, Olakai automatically captures:
 const olakai = new OlakaiSDK({
   // Required
   apiKey: 'your-olakai-api-key',
-  monitoringEndpoint: 'https://app.olakai.ai/api/monitoring/prompt',
 
-  // Optional
-  controlEndpoint: 'https://app.olakai.ai/api/control/prompt', // For Control API
+  // Optional — host configuration
+  host: 'app.olakai.ai',        // Hostname only. Default: "app.olakai.ai".
+                                // For on-prem, set `OLAKAI_HOST` env var
+                                // or pass an on-prem host (e.g. "olakai.acme.com").
+                                // Used to derive monitoring, control, and feedback endpoints.
+
+  // Optional — full endpoint overrides (rarely needed; `host` is preferred)
+  monitoringEndpoint: 'https://app.olakai.ai/api/monitoring/prompt',
+  controlEndpoint: 'https://app.olakai.ai/api/control/prompt',
+
+  // Optional — behavior
   enableControl: false,  // Enable Control API globally (default: false)
   retries: 4,            // API retry attempts (default: 4)
   timeout: 30000,        // Request timeout in ms (default: 30000)
@@ -102,6 +110,27 @@ const olakai = new OlakaiSDK({
   verbose: false         // Verbose logging (default: false)
 });
 ```
+
+#### On-prem deployments
+
+For on-prem (self-hosted) Olakai installations, point the SDK at your on-prem host
+in any of three ways (precedence: explicit `host` → `OLAKAI_HOST` env var → default):
+
+```typescript
+// 1. Pass `host` explicitly
+new OlakaiSDK({ apiKey, host: 'olakai.acme.com' });
+
+// 2. Set OLAKAI_HOST in the environment (Node.js)
+//    OLAKAI_HOST=olakai.acme.com node app.js
+new OlakaiSDK({ apiKey });
+
+// 3. SaaS default — no configuration needed
+new OlakaiSDK({ apiKey });
+```
+
+The resolved host is used for the monitoring, control, and feedback endpoints
+in one place. Use `monitoringEndpoint` / `controlEndpoint` only when you need
+each endpoint to point at a different URL.
 
 ### Wrapper Configuration
 
