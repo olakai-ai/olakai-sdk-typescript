@@ -5,6 +5,35 @@ All notable changes to the Olakai SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-05-04
+
+### Added
+
+- **On-prem host configuration.** The SDK now resolves its target host with the
+  precedence: explicit `host` constructor option → `OLAKAI_HOST` env var →
+  default `app.olakai.ai`. The resolved host is used to derive the monitoring,
+  control, and feedback endpoints in one place — useful for self-hosted Olakai
+  deployments.
+  - New `host?: string` option on `OlakaiSDK` constructor.
+  - `initClient(apiKey, domainUrl?, options?)` — `domainUrl` is now optional
+    and falls back to `OLAKAI_HOST` / default when omitted.
+  - `process.env` access is guarded so the SDK still works in browsers.
+- Backward compatible: existing `monitoringEndpoint` / `controlEndpoint`
+  overrides still work and take precedence when provided.
+
+### Example
+
+```typescript
+// SaaS (default)
+new OlakaiSDK({ apiKey });
+
+// On-prem via env var: OLAKAI_HOST=olakai.acme.com
+new OlakaiSDK({ apiKey });
+
+// On-prem via explicit option
+new OlakaiSDK({ apiKey, host: 'olakai.acme.com' });
+```
+
 ## [2.5.0] - 2026-04-14
 
 ### Changed

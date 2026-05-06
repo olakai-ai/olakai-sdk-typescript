@@ -13,7 +13,12 @@ import type {
 } from "./types";
 import { OpenAIProvider } from "./providers/openai";
 import { VercelAIIntegration } from "./integrations/vercel-ai";
-import { sendToAPI, initClient } from "./client";
+import {
+  sendToAPI,
+  initClient,
+  resolveOriginUrl,
+  buildEndpointsFromOrigin,
+} from "./client";
 import { createId, olakaiLogger, toJsonValue } from "./utils";
 import { OlakaiBlockedError } from "./exceptions";
 import packageJson from "../package.json";
@@ -22,6 +27,18 @@ import {
   BaseLLMProvider,
   GoogleProvider,
 } from "./providers";
+
+/**
+ * Best-effort wrapper around `resolveOriginUrl` that returns `undefined`
+ * instead of throwing, so callers can fall through to the next resolution step.
+ */
+function safeOrigin(url: string): string | undefined {
+  try {
+    return resolveOriginUrl(url);
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Main Olakai SDK class
@@ -33,12 +50,12 @@ export class OlakaiSDK {
   private vercelAI: VercelAIIntegration;
   private sessionId: string;
 
-  private static readonly DEFAULT_ENDPOINT = "https://app.olakai.ai";
-
   constructor(config: {
     apiKey: string;
+    host?: string;
     monitoringEndpoint?: string;
     controlEndpoint?: string;
+    feedbackEndpoint?: string;
     enableControl?: boolean;
     sessionId?: string;
     retries?: number;
@@ -46,18 +63,36 @@ export class OlakaiSDK {
     debug?: boolean;
     verbose?: boolean;
   }) {
-    // Build full config with defaults
-    const domainUrl = config.monitoringEndpoint
-      ? config.monitoringEndpoint.replace("/api/monitoring/prompt", "")
-      : OlakaiSDK.DEFAULT_ENDPOINT;
+    // Resolve the base origin. Precedence:
+    //   explicit `host` → origin of explicit `monitoringEndpoint` → `OLAKAI_HOST`
+    //   env var → DEFAULT_HOST.
+    // The fallback to `monitoringEndpoint`'s origin preserves 2.5.0 behavior
+    // for customers who only passed `monitoringEndpoint`: control/feedback
+    // continue to track the same host instead of silently reverting to SaaS.
+    const hostFromMonitoring =
+      !config.host && config.monitoringEndpoint
+        ? safeOrigin(config.monitoringEndpoint)
+        : undefined;
+    const origin = resolveOriginUrl(config.host ?? hostFromMonitoring);
+    const derived = buildEndpointsFromOrigin(origin);
+
+    const monitorEndpoint = config.monitoringEndpoint ?? derived.monitorEndpoint;
+    const controlEndpoint = config.controlEndpoint ?? derived.controlEndpoint;
+    const feedbackEndpoint = config.feedbackEndpoint ?? derived.feedbackEndpoint;
+
+    // Warn (don't throw) when endpoints come from different hosts. Customers
+    // sometimes legitimately need this (split monitoring and feedback hosts),
+    // but more often it's a copy-paste mistake — surface it loudly.
+    OlakaiSDK.warnOnMixedHosts(
+      { monitorEndpoint, controlEndpoint, feedbackEndpoint },
+      config.debug ?? false,
+    );
 
     this.config = {
       apiKey: config.apiKey,
-      monitorEndpoint:
-        config.monitoringEndpoint || `${domainUrl}/api/monitoring/prompt`,
-      controlEndpoint:
-        config.controlEndpoint || `${domainUrl}/api/control/prompt`,
-      feedbackEndpoint: `${domainUrl}/api/monitoring/feedback`,
+      monitorEndpoint,
+      controlEndpoint,
+      feedbackEndpoint,
       enableControl: config.enableControl ?? false, // Default: disabled
       retries: config.retries ?? 4,
       timeout: config.timeout ?? 30000,
@@ -76,15 +111,47 @@ export class OlakaiSDK {
   }
 
   /**
-   * Initialize the SDK (must be called before using wrap)
+   * Warn if the three endpoints don't share an origin. Each is genuinely
+   * configurable, but a mismatch is more often a misconfiguration than a
+   * deliberate choice, so we surface it.
+   */
+  private static warnOnMixedHosts(
+    endpoints: {
+      monitorEndpoint: string;
+      controlEndpoint: string;
+      feedbackEndpoint: string;
+    },
+    debug: boolean,
+  ): void {
+    const origins = new Set<string>();
+    for (const url of Object.values(endpoints)) {
+      try {
+        origins.add(new URL(url).origin);
+      } catch {
+        // Invalid URL surfaces later in the validation/HTTP layer.
+      }
+    }
+    if (origins.size > 1) {
+      olakaiLogger(
+        `[Olakai SDK] Mixed endpoint hosts detected (${[...origins].join(", ")}). ` +
+          `Most deployments should share a single host. Pass \`host\` instead of ` +
+          `per-endpoint overrides if you didn't intend this.`,
+        "warn",
+        debug,
+      );
+    }
+  }
+
+  /**
+   * Initialize the SDK (must be called before using wrap).
+   * Passes the already-resolved endpoints to `initClient` rather than
+   * re-deriving them from a stripped URL.
    */
   async init(): Promise<void> {
-    const domainUrl = this.config.monitorEndpoint.replace(
-      "/api/monitoring/prompt",
-      "",
-    );
-
-    await initClient(this.config.apiKey, domainUrl, {
+    await initClient(this.config.apiKey, undefined, {
+      monitorEndpoint: this.config.monitorEndpoint,
+      controlEndpoint: this.config.controlEndpoint,
+      feedbackEndpoint: this.config.feedbackEndpoint,
       retries: this.config.retries,
       timeout: this.config.timeout,
       debug: this.config.debug,

@@ -13,17 +13,84 @@ import {
   APIKeyMissingError,
   ConfigNotInitializedError,
   HTTPError,
-  OlakaiBlockedError,
   URLConfigurationError,
 } from "./exceptions";
 
-let config: SDKConfig;
+let config: SDKConfig | undefined;
+
+export const DEFAULT_HOST = "app.olakai.ai";
+
+/**
+ * Read `OLAKAI_HOST` from the environment, guarding against browser
+ * runtimes where `process` is not defined.
+ */
+export function readOlakaiHostEnv(): string | undefined {
+  return typeof process !== "undefined" && process.env
+    ? process.env.OLAKAI_HOST
+    : undefined;
+}
+
+/**
+ * Loopback hostnames default to http:// because local Olakai dev servers
+ * (e.g. `pnpm dev` on `localhost:3000`) don't usually have TLS.
+ * Match `localhost`, `127.0.0.1`, or IPv6 `[::1]`, with an optional port.
+ */
+const LOOPBACK_HOST_REGEX = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+
+/**
+ * Resolve the base origin URL the SDK should call.
+ * Precedence: explicit `host` (or full base URL) → `OLAKAI_HOST` env → DEFAULT_HOST.
+ * Accepts a bare hostname ("olakai.acme.com") or a full URL ("https://olakai.acme.com");
+ * trailing slashes are stripped. `URL` is used to parse explicit values so that paths
+ * and query strings are dropped — only the origin is kept.
+ *
+ * Bare hostnames are assumed to be `https://`, except loopback hosts
+ * (`localhost`, `127.0.0.1`, `[::1]`, with optional port) which default to
+ * `http://` for local-dev convenience. Pass an explicit `https://` prefix to
+ * override.
+ */
+export function resolveOriginUrl(explicit?: string): string {
+  const raw = explicit || readOlakaiHostEnv() || DEFAULT_HOST;
+  let withScheme: string;
+  if (/^https?:\/\//i.test(raw)) {
+    withScheme = raw;
+  } else if (LOOPBACK_HOST_REGEX.test(raw)) {
+    withScheme = `http://${raw}`;
+  } else {
+    withScheme = `https://${raw}`;
+  }
+  try {
+    return new URL(withScheme).origin;
+  } catch {
+    throw new URLConfigurationError(
+      `[Olakai SDK] Invalid host or URL: ${raw}`,
+    );
+  }
+}
+
+/**
+ * Build the three derived endpoints from a single resolved origin.
+ */
+export function buildEndpointsFromOrigin(origin: string): {
+  monitorEndpoint: string;
+  controlEndpoint: string;
+  feedbackEndpoint: string;
+} {
+  return {
+    monitorEndpoint: `${origin}/api/monitoring/prompt`,
+    controlEndpoint: `${origin}/api/control/prompt`,
+    feedbackEndpoint: `${origin}/api/monitoring/feedback`,
+  };
+}
 
 /**
  * Initialize the SDK
  * @param apiKey - The API key
- * @param domainUrl - The domain URL
- * @param options - The extra options for the SDKConfig
+ * @param domainUrl - The domain URL or bare hostname. If omitted, falls back
+ *   to the `OLAKAI_HOST` env var (e.g. on-prem host) or `app.olakai.ai`.
+ *   Only the origin is used; any path/query is dropped.
+ * @param options - Extra options. May include explicit `monitorEndpoint`,
+ *   `controlEndpoint`, and/or `feedbackEndpoint` to override the derived URLs.
  * @default options - {
  *  retries: 4,
  *  timeout: 30000,
@@ -36,53 +103,48 @@ let config: SDKConfig;
  */
 export async function initClient(
   apiKey: string,
-  domainUrl: string,
+  domainUrl?: string,
   options: Partial<SDKConfig> = {},
 ) {
-  // Extract known parameters
+  const origin = resolveOriginUrl(domainUrl);
+  const derived = buildEndpointsFromOrigin(origin);
+
   const configBuilder = new ConfigBuilder();
   configBuilder.apiKey(apiKey);
-  configBuilder.monitorEndpoint(`${domainUrl}/api/monitoring/prompt`);
-  configBuilder.controlEndpoint(`${domainUrl}/api/control/prompt`);
-  configBuilder.feedbackEndpoint(`${domainUrl}/api/monitoring/feedback`);
+  configBuilder.monitorEndpoint(options.monitorEndpoint ?? derived.monitorEndpoint);
+  configBuilder.controlEndpoint(options.controlEndpoint ?? derived.controlEndpoint);
+  configBuilder.feedbackEndpoint(options.feedbackEndpoint ?? derived.feedbackEndpoint);
   configBuilder.retries(options.retries || 4);
   configBuilder.timeout(options.timeout || 30000);
   configBuilder.version(options.version || packageJson.version);
   configBuilder.debug(options.debug || false);
   configBuilder.verbose(options.verbose || false);
-  config = configBuilder.build();
 
-  // Validate required configuration
-  if (
-    !config.monitorEndpoint ||
-    config.monitorEndpoint === "/api/monitoring/prompt"
-  ) {
-    throw new URLConfigurationError(
-      "[Olakai SDK] API URL is not set. Please provide a valid monitorEndpoint in the configuration.",
-    );
-  }
-  if (
-    !config.controlEndpoint ||
-    config.controlEndpoint === "/api/control/prompt"
-  ) {
-    throw new URLConfigurationError(
-      "[Olakai SDK] API URL is not set. Please provide a valid controlEndpoint in the configuration.",
-    );
-  }
-  if (!config.apiKey || config.apiKey.trim() === "") {
+  // Validate before assigning to the module singleton so a failed re-init
+  // doesn't leave a half-built config in place.
+  const built = configBuilder.build();
+  if (!built.apiKey || built.apiKey.trim() === "") {
     throw new APIKeyMissingError(
       "[Olakai SDK] API key is not set. Please provide a valid apiKey in the configuration.",
     );
   }
+  config = built;
   olakaiLogger(`Config: ${JSON.stringify(config)}`, "info", config.debug);
 }
 
 /**
- * Get the current configuration
- * @returns The current configuration
+ * Get the current configuration. Returns a shallow copy so callers cannot
+ * mutate the module-level singleton.
  * @throws {ConfigNotInitializedError} if the config is not initialized
  */
 export function getConfig(): SDKConfig {
+  return { ...requireConfig() };
+}
+
+/**
+ * Internal: assert config is initialized and narrow the type.
+ */
+function requireConfig(): SDKConfig {
   if (!config) {
     throw new ConfigNotInitializedError(
       "[Olakai SDK] Config is not initialized",
@@ -104,45 +166,34 @@ async function makeAPICall(
   payload: MonitorPayload[] | ControlPayload | FeedbackPayload,
   role: "monitoring" | "control" | "feedback" = "monitoring",
 ): Promise<MonitoringAPIResponse | ControlAPIResponse | void> {
-  if (!config.apiKey) {
-    throw new APIKeyMissingError("[Olakai SDK] API key is not set");
-  }
+  // Caller (`sendToAPI`) is the single gate for init/apiKey state. By the
+  // time we get here, both have been validated.
+  const cfg = requireConfig();
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), config.timeout);
+  const timeoutId = setTimeout(() => controller.abort(), cfg.timeout);
   let url: string = "";
 
   if (role === "monitoring") {
-    url = config.monitorEndpoint;
+    url = cfg.monitorEndpoint;
   } else if (role === "control") {
-    url = config.controlEndpoint;
+    url = cfg.controlEndpoint;
   } else if (role === "feedback") {
-    if (config.feedbackEndpoint) {
-      url = config.feedbackEndpoint;
-    } else {
-      // Backward-compat safety net: older callers may construct SDKConfig
-      // manually without setting feedbackEndpoint. Derive it from the
-      // monitoring endpoint (same host, swap the trailing path segment).
-      url = config.monitorEndpoint.replace(/\/prompt(\/?$)/, "/feedback$1");
-      olakaiLogger(
-        `feedbackEndpoint not configured; derived from monitorEndpoint: ${url}`,
-        "warn",
-      );
-    }
+    url = cfg.feedbackEndpoint;
   }
 
-  olakaiLogger(`Making API call to ${role} endpoint: ${url}`, "info", config.debug);
+  olakaiLogger(`Making API call to ${role} endpoint: ${url}`, "info", cfg.debug);
 
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "x-api-key": config.apiKey,
+        "x-api-key": cfg.apiKey,
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-    olakaiLogger(`API call response: ${response.status}`, "info", config.debug);
+    olakaiLogger(`API call response: ${response.status}`, "info", cfg.debug);
 
     if (role === "feedback") {
       clearTimeout(timeoutId);
@@ -165,7 +216,7 @@ async function makeAPICall(
       responseData = (await response.json()) as ControlAPIResponse;
     }
 
-    olakaiLogger(`API response: ${JSON.stringify(responseData)}`, "info", config.debug);
+    olakaiLogger(`API response: ${JSON.stringify(responseData)}`, "info", cfg.debug);
 
     clearTimeout(timeoutId);
 
@@ -176,7 +227,7 @@ async function makeAPICall(
         olakaiLogger(
           `Request succeeded: ${JSON.stringify(responseData)}`,
           "info",
-          config.debug,
+          cfg.debug,
         );
         return responseData;
       } else if (response.status === ErrorCode.PARTIAL_SUCCESS) {
@@ -232,9 +283,10 @@ async function makeAPICall(
  */
 async function sendWithRetry(
   payload: MonitorPayload[] | ControlPayload | FeedbackPayload,
-  maxRetries: number = config.retries!,
+  maxRetries: number,
   role: "monitoring" | "control" | "feedback" = "monitoring",
 ): Promise<MonitoringAPIResponse | ControlAPIResponse | void> {
+  const cfg = requireConfig();
   let lastError: Error | null = null;
   let response: MonitoringAPIResponse | ControlAPIResponse = {} as
     | MonitoringAPIResponse
@@ -253,7 +305,7 @@ async function sendWithRetry(
           olakaiLogger(
             `Request partial success: ${response.successCount}/${response.totalRequests} requests succeeded`,
             "info",
-            config.debug,
+            cfg.debug,
           );
           return response;
         }
@@ -292,29 +344,53 @@ async function sendWithRetry(
 }
 
 /**
- * Send a payload to the API (simplified - no queueing)
+ * Send a payload to the API (simplified - no queueing).
+ *
+ * Error semantics:
+ * - `monitoring` and `feedback` are fire-and-forget telemetry — failures are
+ *   logged but never thrown to the caller, even if the SDK is misconfigured.
+ *   Telemetry must never break the host application.
+ * - `control` is awaited by the caller to decide whether to allow execution,
+ *   so errors propagate. Distinguishes `ConfigNotInitializedError` (init never
+ *   called) from `APIKeyMissingError` (init called but apiKey blank).
+ *
  * @param payload - The payload to send to the endpoint
  * @param role - The role of the API call
- * @returns A promise that resolves when the payload is sent
+ * @returns A promise that resolves when the payload is sent (or fails silently
+ *   for monitoring/feedback). For `control`, resolves to the API response.
  */
 export async function sendToAPI(
   payload: MonitorPayload | ControlPayload | FeedbackPayload,
   role: "monitoring" | "control" | "feedback" = "monitoring",
 ): Promise<ControlAPIResponse | void> {
-  if (!config.apiKey) {
-    throw new APIKeyMissingError("[Olakai SDK] API key is not set");
+  // Single gate for all three roles. Validates init state and apiKey.
+  // Inner helpers (`sendWithRetry`, `makeAPICall`) trust this check.
+  let cfg: SDKConfig;
+  try {
+    cfg = requireConfig();
+    if (!cfg.apiKey || cfg.apiKey.trim() === "") {
+      throw new APIKeyMissingError("[Olakai SDK] API key is not set");
+    }
+  } catch (error) {
+    if (role === "control") {
+      // Control gates execution — the caller needs the precise error type
+      // (ConfigNotInitializedError vs APIKeyMissingError) to react.
+      throw error;
+    }
+    // Fire-and-forget: log and bail.
+    olakaiLogger(
+      `[Olakai SDK] ${role} skipped: ${(error as Error).message}`,
+      "warn",
+    );
+    return;
   }
 
   if (role === "feedback") {
     try {
-      await sendWithRetry(
-        payload as FeedbackPayload,
-        config.retries!,
-        "feedback",
-      );
+      await sendWithRetry(payload as FeedbackPayload, cfg.retries, "feedback");
     } catch (error) {
       olakaiLogger(`Error during feedback API call: ${error}`, "error");
-      throw error;
+      // Fire-and-forget: swallow.
     }
     return;
   }
@@ -323,11 +399,10 @@ export async function sendToAPI(
     try {
       const response = (await sendWithRetry(
         [payload as MonitorPayload],
-        config.retries!,
+        cfg.retries,
         "monitoring",
       )) as MonitoringAPIResponse;
 
-      // Log any response information if present
       if (
         response.totalRequests !== undefined &&
         response.successCount !== undefined
@@ -336,27 +411,23 @@ export async function sendToAPI(
         olakaiLogger(
           `API call result: ${response.successCount}/${response.totalRequests} requests succeeded`,
           level,
-          level === "info" && config.debug,
+          level === "info" && cfg.debug,
         );
       }
     } catch (error) {
       olakaiLogger(`Error during monitoring API call: ${error}`, "error");
-      throw error;
+      // Fire-and-forget: swallow.
     }
-  } else if (role === "control") {
-    try {
-      return (await sendWithRetry(
-        payload as ControlPayload,
-        config.retries!,
-        "control",
-      )) as ControlAPIResponse;
-    } catch (error) {
-      if (error instanceof OlakaiBlockedError) {
-        throw error;
-      }
-      throw error;
-    }
-  } else {
-    throw new Error("[Olakai SDK] Invalid role");
+    return;
   }
+
+  if (role === "control") {
+    return (await sendWithRetry(
+      payload as ControlPayload,
+      cfg.retries,
+      "control",
+    )) as ControlAPIResponse;
+  }
+
+  throw new Error("[Olakai SDK] Invalid role");
 }

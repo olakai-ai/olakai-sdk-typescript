@@ -52,10 +52,11 @@ olakai("event", "ai_activity", {
 import { OlakaiSDK } from '@olakai/sdk';
 import OpenAI from 'openai';
 
-// Initialize SDK
+// Initialize SDK.
+// `host` defaults to "app.olakai.ai" (SaaS). For on-prem, set the
+// `OLAKAI_HOST` env var or pass `host: "olakai.acme.com"` explicitly.
 const olakai = new OlakaiSDK({
   apiKey: 'your-olakai-api-key',
-  monitoringEndpoint: 'https://app.olakai.ai/api/monitoring/prompt',
   enableControl: false // Optional Control API (default: false)
 });
 
