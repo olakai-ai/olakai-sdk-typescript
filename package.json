@@ -1,6 +1,6 @@
 {
   "name": "@olakai/sdk",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "This document demonstrates how to use the Olakai SDK with all its features.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,7 +26,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "pnpm": "^10.13.1",
     "uuidv7": "1.1.0"
   },
   "peerDependencies": {
