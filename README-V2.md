@@ -8,7 +8,6 @@ Track AI interactions with zero manual effort. Wrap your OpenAI (and soon Anthro
 
 - ✅ **Automatic metadata capture** - No more manual token counting, timing, or model tracking
 - ✅ **Provider wrappers** - Seamless OpenAI integration with drop-in wrapping
-- ✅ **API key tracking** - Automatic cost tracking and ROI measurement
 - ✅ **Node.js focused** - Removed browser code for simpler, faster performance
 - ✅ **Optional Control API** - Disabled by default, opt-in for content blocking
 - ✅ **90% less code** - Simplified integration compared to v1.x
@@ -62,7 +61,6 @@ const response = await trackedOpenAI.chat.completions.create({
 // ✅ Model name (gpt-4)
 // ✅ Token usage (prompt, completion, total)
 // ✅ Request timing (duration)
-// ✅ API key (for cost tracking)
 // ✅ Temperature, max_tokens, and all parameters
 // ✅ Error tracking
 ```
@@ -78,7 +76,6 @@ When you wrap an LLM client, Olakai automatically captures:
 | **Model** | Model name used | `gpt-4`, `gpt-3.5-turbo` |
 | **Tokens** | Detailed token usage | `{prompt: 45, completion: 120, total: 165}` |
 | **Timing** | Request duration | `{startTime, endTime, duration: 1234ms}` |
-| **API Key** | Provider API key | `sk-...` (for cost tracking) |
 | **Parameters** | All model params | `{temperature: 0.7, max_tokens: 500}` |
 | **Function Calls** | Tool/function usage | Function calling metadata |
 | **Stream Mode** | Streaming detection | `true/false` |
@@ -357,15 +354,9 @@ const response = await trackedOpenAI.chat.completions.create({...});
 // Everything auto-tracked! ✨
 ```
 
-## 📊 API Key Tracking for Cost Analysis
+## 🔒 Provider API Keys
 
-v2.0 automatically captures OpenAI API keys, enabling:
-- **Per-key cost tracking** - Track costs by team, project, or environment
-- **ROI measurement** - Measure agent implementation effectiveness
-- **Budget monitoring** - Alert on cost thresholds
-- **Usage attribution** - Understand which implementations drive costs
-
-The API key is securely transmitted to your Olakai backend for cost calculation based on token usage and OpenAI pricing.
+The SDK never reads or sends your provider API key (OpenAI, Anthropic, Google). Cost is calculated from model and token usage.
 
 ## 🛠️ Advanced Features
 

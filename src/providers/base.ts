@@ -35,13 +35,6 @@ export abstract class BaseLLMProvider<TClient = any> {
   ): Partial<LLMMetadata>;
 
   /**
-   * Extract API key from client configuration
-   * @param client - The LLM client instance
-   * @returns API key string or undefined
-   */
-  protected abstract extractApiKey(client: TClient): string | undefined;
-
-  /**
    * Get the provider name
    * @returns The provider name (e.g., "openai", "anthropic")
    */

@@ -192,7 +192,8 @@ export type LLMProvider = "openai" | "anthropic" | "google" | "custom";
 export type LLMMetadata = {
   provider: LLMProvider;
   model: string;
-  apiKey?: string; // Optional API key for cost tracking
+  /** @deprecated Ignored since 2.6.2; never sent. */
+  apiKey?: string;
   tokens?: {
     prompt?: number;
     completion?: number;
@@ -251,7 +252,10 @@ export type VercelAIContext = {
   taskExecutionId?: string; // Groups prompt requests by task execution
   task?: string;
   subTask?: string;
-  apiKey?: string; // Provider API key for cost tracking
+  /**
+   * @deprecated Ignored since 2.6.2. The SDK never reads or sends provider API keys.
+   */
+  apiKey?: string;
   enableControl?: boolean; // Override global Control API setting
   sanitize?: boolean;
   customData?: Record<string, string | number | boolean | undefined>;

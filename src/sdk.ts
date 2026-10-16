@@ -19,7 +19,7 @@ import {
   resolveOriginUrl,
   buildEndpointsFromOrigin,
 } from "./client";
-import { createId, olakaiLogger, toJsonValue } from "./utils";
+import { createId, olakaiLogger, toJsonValue, withoutApiKey } from "./utils";
 import { OlakaiBlockedError } from "./exceptions";
 import packageJson from "../package.json";
 import {
@@ -359,7 +359,7 @@ export class OlakaiSDK {
       modelName: metadata.model,
       blocked,
       errorMessage,
-      llmMetadata: metadata,
+      llmMetadata: withoutApiKey(metadata),
     };
 
     try {
@@ -533,8 +533,7 @@ export class OlakaiSDK {
    *   model: openai('gpt-4'),
    *   prompt: 'Hello world'
    * }, {
-   *   task: 'Greeting',
-   *   apiKey: 'sk-...'
+   *   task: 'Greeting'
    * });
    * ```
    */
@@ -565,8 +564,7 @@ export class OlakaiSDK {
    *   model: openai('gpt-4'),
    *   prompt: 'Write a story'
    * }, {
-   *   task: 'Creative Writing',
-   *   apiKey: 'sk-...'
+   *   task: 'Creative Writing'
    * });
    *
    * for await (const chunk of result.textStream) {

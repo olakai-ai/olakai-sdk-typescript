@@ -8,7 +8,6 @@ This guide helps you migrate from the old Olakai SDK to the new v2.0 with improv
 ✅ **LLM provider wrappers** - Wrap OpenAI (and soon Anthropic) clients for seamless integration
 ✅ **Node.js focused** - Removed browser support for simpler, more reliable Node.js performance
 ✅ **Optional Control API** - Disabled by default, opt-in when you need content blocking
-✅ **API key tracking** - Automatically capture API keys for cost analysis and ROI measurement
 ✅ **Simplified API** - One primary SDK class instead of 3 different methods
 
 ## Breaking Changes
@@ -77,7 +76,7 @@ const response = await trackedOpenAI.chat.completions.create({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Hello!' }]
 });
-// ✅ Model, tokens, timing, API key - all auto-tracked!
+// ✅ Model, tokens, timing - all auto-tracked!
 ```
 
 ## Migration Steps
@@ -171,7 +170,6 @@ const response = await trackedOpenAI.chat.completions.create({
 // - Model: auto-captured
 // - Tokens: auto-captured
 // - Timing: auto-captured
-// - API key: auto-captured
 ```
 
 ### Step 4: Enable Control API (Optional)
@@ -221,7 +219,6 @@ The new SDK automatically captures:
 - ✅ **Function calling** (if using tools/functions)
 - ✅ **Streaming mode** detection
 - ✅ **Finish reason** (stop, length, function_call, etc.)
-- ✅ **OpenAI API key** (for cost tracking and ROI analysis)
 - ✅ **Error states** (rate limits, API errors)
 
 ## Full Example: Before & After
@@ -299,7 +296,7 @@ const response = await trackedOpenAI.chat.completions.create({
 });
 
 // That's it! No manual tracking needed.
-// All metadata (model, tokens, timing, API key, temperature) automatically captured!
+// All metadata (model, tokens, timing, temperature) automatically captured!
 ```
 
 ## Backwards Compatibility
@@ -319,7 +316,7 @@ olakai("event", "ai_activity", { ... });
 ## Benefits of Migrating
 
 1. **90% less code** - No manual extraction of tokens, timing, model names
-2. **Automatic cost tracking** - API keys captured for ROI analysis
+2. **Automatic cost tracking** - Cost derived from model and token usage
 3. **Type safety** - Better TypeScript support with generic types
 4. **Error resilience** - Monitoring failures don't break your app
 5. **Future-proof** - Easy to add Anthropic, Cohere, and other providers

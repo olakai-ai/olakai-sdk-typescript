@@ -15,7 +15,7 @@ import type {
   ControlAPIResponse,
 } from "../types";
 import { sendToAPI } from "../client";
-import { olakaiLogger, toJsonValue } from "../utils";
+import { olakaiLogger, toJsonValue, withoutApiKey } from "../utils";
 import { OlakaiBlockedError } from "../exceptions";
 
 // Dynamic imports to make Vercel AI SDK optional
@@ -292,7 +292,6 @@ export class VercelAIIntegration {
     const metadata: LLMMetadata = {
       provider: this.inferProvider(params),
       model: this.extractModelName(params),
-      apiKey: context.apiKey,
       timing: {
         startTime,
         endTime,
@@ -457,7 +456,7 @@ export class VercelAIIntegration {
       requestTime: metadata.timing?.duration,
       blocked,
       errorMessage,
-      llmMetadata: metadata,
+      llmMetadata: withoutApiKey(metadata),
     };
 
     try {

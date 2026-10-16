@@ -82,16 +82,12 @@ export class AnthropicProvider extends BaseLLMProvider {
       // Extract request metadata
       const requestMetadata = self.extractRequestMetadata(request);
 
-      // Extract API key from client
-      const apiKey = self.extractApiKey(client);
-
       // Check if this is a streaming request
       if (request.stream === true) {
         return self.handleStreamingCreate(
           originalMethod,
           args,
           request,
-          apiKey,
           requestMetadata,
           startTime,
         );
@@ -110,7 +106,6 @@ export class AnthropicProvider extends BaseLLMProvider {
         const metadata: LLMMetadata = {
           provider: "anthropic",
           model: response.model || request.model || "unknown",
-          apiKey,
           ...requestMetadata,
           ...responseMetadata,
           timing: {
@@ -140,7 +135,6 @@ export class AnthropicProvider extends BaseLLMProvider {
         const errorMetadata: LLMMetadata = {
           provider: "anthropic",
           model: request.model || "unknown",
-          apiKey,
           ...requestMetadata,
           timing: {
             startTime,
@@ -184,22 +178,18 @@ export class AnthropicProvider extends BaseLLMProvider {
       const requestMetadata = self.extractRequestMetadata(request);
       requestMetadata.streamMode = true;
 
-      // Extract API key from client
-      const apiKey = self.extractApiKey(client);
-
       try {
         // Call original method
         const stream = originalMethod.apply(this, args);
 
         // Wrap the stream to capture events
-        return self.wrapStream(stream, request, apiKey, requestMetadata, startTime);
+        return self.wrapStream(stream, request, requestMetadata, startTime);
       } catch (error) {
         const endTime = Date.now();
 
         const errorMetadata: LLMMetadata = {
           provider: "anthropic",
           model: request.model || "unknown",
-          apiKey,
           ...requestMetadata,
           streamMode: true,
           timing: {
@@ -228,7 +218,6 @@ export class AnthropicProvider extends BaseLLMProvider {
     originalMethod: Function,
     args: any[],
     request: any,
-    apiKey: string | undefined,
     requestMetadata: Partial<LLMMetadata>,
     startTime: number,
   ): Promise<any> {
@@ -239,14 +228,13 @@ export class AnthropicProvider extends BaseLLMProvider {
       const stream = await originalMethod.apply(null, args);
 
       // Wrap the stream to capture events
-      return self.wrapStream(stream, request, apiKey, { ...requestMetadata, streamMode: true }, startTime);
+      return self.wrapStream(stream, request, { ...requestMetadata, streamMode: true }, startTime);
     } catch (error) {
       const endTime = Date.now();
 
       const errorMetadata: LLMMetadata = {
         provider: "anthropic",
         model: request.model || "unknown",
-        apiKey,
         ...requestMetadata,
         streamMode: true,
         timing: {
@@ -273,7 +261,6 @@ export class AnthropicProvider extends BaseLLMProvider {
   private wrapStream(
     stream: any,
     request: any,
-    apiKey: string | undefined,
     requestMetadata: Partial<LLMMetadata>,
     startTime: number,
   ): any {
@@ -297,7 +284,6 @@ export class AnthropicProvider extends BaseLLMProvider {
       const metadata: LLMMetadata = {
         provider: "anthropic",
         model: finalMessage?.model || request.model || "unknown",
-        apiKey,
         ...requestMetadata,
         ...responseMetadata,
         streamMode: true,
@@ -541,40 +527,6 @@ export class AnthropicProvider extends BaseLLMProvider {
     return metadata;
   }
 
-  /**
-   * Extract API key from Anthropic client
-   */
-  protected extractApiKey(client: any): string | undefined {
-    try {
-      // Anthropic client stores API key in various ways depending on version
-      if (client.apiKey) {
-        return client.apiKey;
-      }
-      if (client._apiKey) {
-        return client._apiKey;
-      }
-      // For newer Anthropic SDK versions
-      if (client._options?.apiKey) {
-        return client._options.apiKey;
-      }
-      // Check auth header pattern
-      if (client.authToken) {
-        return client.authToken;
-      }
-
-      olakaiLogger(
-        "[Anthropic Wrapper] Could not extract API key from client",
-        "warn",
-      );
-      return undefined;
-    } catch (error) {
-      olakaiLogger(
-        `[Anthropic Wrapper] Error extracting API key: ${error}`,
-        "error",
-      );
-      return undefined;
-    }
-  }
 
   /**
    * Extract prompt from Anthropic request (user messages only)
