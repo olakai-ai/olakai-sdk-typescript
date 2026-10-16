@@ -5,6 +5,7 @@ import type {
   JsonArray,
   JsonObject,
   SanitizePattern,
+  LLMMetadata,
 } from "./types";
 
 /**
@@ -264,4 +265,14 @@ export function olakaiLogger(
 export function createId(): string {
   const removeDashes = uuidv7().replaceAll("-", "");
   return removeDashes.substring(removeDashes.length - 25);
+}
+/**
+ * Defense in depth: never forward a provider API key inside llmMetadata,
+ * even if a custom provider or caller attaches one at runtime.
+ */
+export function withoutApiKey(metadata: LLMMetadata): LLMMetadata {
+  const { apiKey: _dropped, ...safe } = metadata as LLMMetadata & {
+    apiKey?: unknown;
+  };
+  return safe;
 }

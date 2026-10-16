@@ -1,6 +1,6 @@
 {
   "name": "@olakai/sdk",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "This document demonstrates how to use the Olakai SDK with all its features.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,7 @@
     "build": "npm run clean && tsc",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run build && node --test test/*.test.js"
   },
   "keywords": [
     "olakai",

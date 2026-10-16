@@ -64,8 +64,7 @@ const result = await olakai.generateText({
   model: openai('gpt-4'),
   prompt: 'Explain TypeScript in one sentence'
 }, {
-  task: 'Education',
-  apiKey: process.env.OPENAI_API_KEY
+  task: 'Education'
 });
 
 console.log(result.text);
@@ -125,7 +124,6 @@ Generate text using any Vercel AI SDK provider with automatic tracking.
   subTask?: string,            // Sub-task categorization
   userEmail?: string,          // User identification
   chatId?: string,             // Session/conversation ID
-  apiKey?: string,             // Provider API key for cost tracking
   enableControl?: boolean,     // Enable Control API for this call
   sanitize?: boolean           // Enable PII redaction
 }
@@ -195,7 +193,7 @@ await olakai.init();
 const gpt4 = await olakai.generateText({
   model: openai('gpt-4'),
   prompt: 'Hello'
-}, { task: 'Greeting', apiKey: process.env.OPENAI_API_KEY });
+}, { task: 'Greeting' });
 
 // Anthropic
 const claude = await olakai.generateText({
@@ -228,8 +226,7 @@ const result = await olakai.generateText({
 }, {
   task: 'Customer Support',
   userEmail: 'user@example.com',
-  chatId: 'session-123',
-  apiKey: process.env.OPENAI_API_KEY
+  chatId: 'session-123'
 });
 ```
 
@@ -240,8 +237,7 @@ const result = await olakai.streamText({
   model: openai('gpt-4'),
   prompt: 'Write a long story about AI'
 }, {
-  task: 'Content Generation',
-  apiKey: process.env.OPENAI_API_KEY
+  task: 'Content Generation'
 });
 
 // Stream the response

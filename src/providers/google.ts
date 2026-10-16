@@ -79,9 +79,6 @@ export class GoogleProvider extends BaseLLMProvider {
       // Extract request metadata
       const requestMetadata = self.extractRequestMetadata(request);
 
-      // Extract API key from client
-      const apiKey = self.extractApiKey(client);
-
       try {
         // Call original method
         const response = await originalMethod.apply(this, args);
@@ -95,7 +92,6 @@ export class GoogleProvider extends BaseLLMProvider {
         const metadata: LLMMetadata = {
           provider: "google",
           model: request.model || "unknown",
-          apiKey,
           ...requestMetadata,
           ...responseMetadata,
           timing: {
@@ -127,7 +123,6 @@ export class GoogleProvider extends BaseLLMProvider {
         const errorMetadata: LLMMetadata = {
           provider: "google",
           model: request.model || "unknown",
-          apiKey,
           ...requestMetadata,
           timing: {
             startTime,
@@ -170,9 +165,6 @@ export class GoogleProvider extends BaseLLMProvider {
       const requestMetadata = self.extractRequestMetadata(request);
       requestMetadata.streamMode = true;
 
-      // Extract API key from client
-      const apiKey = self.extractApiKey(client);
-
       try {
         // Call original method
         const response = await originalMethod.apply(this, args);
@@ -181,7 +173,6 @@ export class GoogleProvider extends BaseLLMProvider {
         const wrappedResponse = self.wrapStreamResponse(
           response,
           request,
-          apiKey,
           requestMetadata,
           startTime,
         );
@@ -193,7 +184,6 @@ export class GoogleProvider extends BaseLLMProvider {
         const errorMetadata: LLMMetadata = {
           provider: "google",
           model: request.model || "unknown",
-          apiKey,
           ...requestMetadata,
           streamMode: true,
           timing: {
@@ -220,7 +210,6 @@ export class GoogleProvider extends BaseLLMProvider {
   private wrapStreamResponse(
     response: any,
     request: any,
-    apiKey: string | undefined,
     requestMetadata: Partial<LLMMetadata>,
     startTime: number,
   ): any {
@@ -243,7 +232,6 @@ export class GoogleProvider extends BaseLLMProvider {
       const metadata: LLMMetadata = {
         provider: "google",
         model: request.model || "unknown",
-        apiKey,
         ...requestMetadata,
         ...responseMetadata,
         streamMode: true,
@@ -460,34 +448,4 @@ export class GoogleProvider extends BaseLLMProvider {
     return metadata;
   }
 
-  /**
-   * Extract API key from Google Generative AI client
-   */
-  protected extractApiKey(client: any): string | undefined {
-    try {
-      // GoogleGenerativeAI stores API key in various ways
-      if (client.apiKey) {
-        return client.apiKey;
-      }
-      if (client._apiKey) {
-        return client._apiKey;
-      }
-      // Check internal options
-      if (client._options?.apiKey) {
-        return client._options.apiKey;
-      }
-
-      olakaiLogger(
-        "[Google Wrapper] Could not extract API key from client",
-        "warn",
-      );
-      return undefined;
-    } catch (error) {
-      olakaiLogger(
-        `[Google Wrapper] Error extracting API key: ${error}`,
-        "error",
-      );
-      return undefined;
-    }
-  }
 }

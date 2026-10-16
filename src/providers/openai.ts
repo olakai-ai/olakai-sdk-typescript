@@ -109,9 +109,6 @@ export class OpenAIProvider extends BaseLLMProvider {
       // Extract request metadata
       const requestMetadata = self.extractRequestMetadata(request);
 
-      // Extract API key from client
-      const apiKey = self.extractApiKey(client);
-
       try {
         // Call original method
         const response = await originalMethod.apply(this, args);
@@ -125,7 +122,6 @@ export class OpenAIProvider extends BaseLLMProvider {
         const metadata: LLMMetadata = {
           provider: "openai",
           model: request.model || "unknown",
-          apiKey,
           ...requestMetadata,
           ...responseMetadata,
           timing: {
@@ -156,7 +152,6 @@ export class OpenAIProvider extends BaseLLMProvider {
         const errorMetadata: LLMMetadata = {
           provider: "openai",
           model: request.model || "unknown",
-          apiKey,
           ...requestMetadata,
           timing: {
             startTime,
@@ -252,40 +247,6 @@ export class OpenAIProvider extends BaseLLMProvider {
     return metadata;
   }
 
-  /**
-   * Extract API key from OpenAI client
-   */
-  protected extractApiKey(client: any): string | undefined {
-    try {
-      // OpenAI client stores API key in various ways depending on version
-      // Try common patterns
-      if (client.apiKey) {
-        return client.apiKey;
-      }
-      if (client._apiKey) {
-        return client._apiKey;
-      }
-      if (client.auth) {
-        return client.auth;
-      }
-      // For newer OpenAI SDK versions
-      if (client._options?.apiKey) {
-        return client._options.apiKey;
-      }
-
-      olakaiLogger(
-        "[OpenAI Wrapper] Could not extract API key from client",
-        "warn",
-      );
-      return undefined;
-    } catch (error) {
-      olakaiLogger(
-        `[OpenAI Wrapper] Error extracting API key: ${error}`,
-        "error",
-      );
-      return undefined;
-    }
-  }
 
   /**
    * Extract prompt from OpenAI request (works for chat and completion endpoints)

@@ -5,6 +5,23 @@ All notable changes to the Olakai SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2] - 2026-10-16
+
+### Security
+
+- **The SDK no longer reads or sends provider API keys.** Before 2.6.2, the
+  OpenAI, Anthropic, and Google wrappers read the provider key from the client
+  (`apiKey`, `_apiKey`, `auth`, `authToken`, `_options.apiKey`) and sent it to
+  Olakai inside `llmMetadata.apiKey`. The Vercel AI integration forwarded
+  `context.apiKey` the same way. All of this is removed. The Olakai `apiKey`
+  (the SDK's own key, sent as `x-api-key`) is unchanged.
+  - `LLMMetadata.apiKey` is removed. `BaseLLMProvider.extractApiKey` is no
+    longer required.
+  - `VercelAIContext.apiKey` is kept for compile compatibility, but it is
+    deprecated and ignored.
+  - As defense in depth, the monitoring payload drops any `apiKey` property
+    from `llmMetadata` before it is sent.
+
 ## [2.6.0] - 2026-05-04
 
 ### Added

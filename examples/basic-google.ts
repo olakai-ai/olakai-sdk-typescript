@@ -74,7 +74,6 @@ async function main() {
   if (result.candidates?.[0]?.finishReason) {
     console.log(`   - Finish reason: ${result.candidates[0].finishReason}`);
   }
-  console.log("   - API key: [captured for cost tracking]");
   console.log("   - Request timing: [auto-calculated]");
   console.log("   - All parameters (temperature, maxOutputTokens, etc.)");
 }
