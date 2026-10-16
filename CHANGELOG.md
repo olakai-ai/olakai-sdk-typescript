@@ -15,10 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Olakai inside `llmMetadata.apiKey`. The Vercel AI integration forwarded
   `context.apiKey` the same way. All of this is removed. The Olakai `apiKey`
   (the SDK's own key, sent as `x-api-key`) is unchanged.
-  - `LLMMetadata.apiKey` is removed. `BaseLLMProvider.extractApiKey` is no
-    longer required.
-  - `VercelAIContext.apiKey` is kept for compile compatibility, but it is
-    deprecated and ignored.
+  - `LLMMetadata.apiKey` and `VercelAIContext.apiKey` are kept for compile
+    compatibility, but they are deprecated and ignored.
+    `BaseLLMProvider.extractApiKey` is no longer required.
   - As defense in depth, the monitoring payload drops any `apiKey` property
     from `llmMetadata` before it is sent.
 

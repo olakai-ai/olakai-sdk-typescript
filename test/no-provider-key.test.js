@@ -79,3 +79,35 @@ for (const [provider, client] of Object.entries(cases)) {
     }
   });
 }
+
+test("anthropic streaming: payload never contains the provider key", async () => {
+  bodies.length = 0;
+  const client = {
+    ...keyFields,
+    messages: {
+      stream: () => ({
+        async *[Symbol.asyncIterator]() {
+          yield { type: "content_block_delta", delta: { type: "text_delta", text: "hi" } };
+          yield { type: "message_stop", message: { model: "claude-x", content: [{ type: "text", text: "hi" }] } };
+        },
+      }),
+    },
+  };
+  const sdk = new OlakaiSDK({ apiKey: "olakai-key", retries: 1 });
+  await sdk.init();
+  const wrapped = sdk.wrap(client, { provider: "anthropic" });
+  for await (const _ of wrapped.messages.stream({ model: "claude-x", messages: [{ role: "user", content: "q" }] })) {
+    // drain
+  }
+  await waitForBody();
+  for (const body of bodies) {
+    assert.ok(!body.includes("SENTINEL"), `provider key leaked: ${body}`);
+  }
+});
+
+test("withoutApiKey strips apiKey and keeps other fields", () => {
+  const { withoutApiKey } = require("../dist/src/utils");
+  const out = withoutApiKey({ provider: "openai", model: "m", apiKey: SENTINEL });
+  assert.deepEqual(out, { provider: "openai", model: "m" });
+  assert.ok(!JSON.stringify(out).includes("SENTINEL"));
+});

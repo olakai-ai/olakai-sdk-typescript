@@ -27,8 +27,7 @@ const result = await olakai.generateText({
   model: openai('gpt-4'),  // Or anthropic(), google(), mistral(), etc.
   prompt: 'Hello world'
 }, {
-  task: 'Greeting',
-  apiKey: 'your-api-key'
+  task: 'Greeting'
 });
 
 // Everything auto-tracked! ✨
@@ -68,7 +67,7 @@ const result = await olakai.generateText({
 });
 
 console.log(result.text);
-// ✅ Automatically tracked: model, tokens, timing, API key, all parameters
+// ✅ Automatically tracked: model, tokens, timing, all parameters
 ```
 
 ## 🌐 Supported Providers
@@ -199,13 +198,13 @@ const gpt4 = await olakai.generateText({
 const claude = await olakai.generateText({
   model: anthropic('claude-3-opus'),
   prompt: 'Hello'
-}, { task: 'Greeting', apiKey: process.env.ANTHROPIC_API_KEY });
+}, { task: 'Greeting' });
 
 // Google
 const gemini = await olakai.generateText({
   model: google('gemini-pro'),
   prompt: 'Hello'
-}, { task: 'Greeting', apiKey: process.env.GOOGLE_API_KEY });
+}, { task: 'Greeting' });
 
 // All tracked automatically with the same code!
 ```
@@ -272,8 +271,7 @@ const result = await olakai.generateText({
   },
   maxSteps: 5
 }, {
-  task: 'Weather Query',
-  apiKey: process.env.OPENAI_API_KEY
+  task: 'Weather Query'
 });
 
 console.log(result.text);
@@ -289,13 +287,13 @@ async function generateWithFallback(prompt: string) {
     return await olakai.generateText({
       model: openai('gpt-4'),
       prompt
-    }, { apiKey: process.env.OPENAI_API_KEY });
+    });
   } catch (error) {
     // Fallback to Claude
     return await olakai.generateText({
       model: anthropic('claude-3-sonnet'),
       prompt
-    }, { apiKey: process.env.ANTHROPIC_API_KEY });
+    });
   }
 }
 
@@ -337,8 +335,7 @@ try {
     prompt: userInput
   }, {
     task: 'User Query',
-    enableControl: true,  // Or enable per-call
-    apiKey: process.env.OPENAI_API_KEY
+    enableControl: true  // Or enable per-call
   });
 
   console.log(result.text);
@@ -357,7 +354,6 @@ When using Vercel AI SDK integration, Olakai automatically captures:
 |----------|--------|---------|
 | **Provider** | Inferred from model | `openai`, `anthropic`, `google` |
 | **Model** | `response.modelId` | `gpt-4-0613` |
-| **API Key** | Context (explicit) | `sk-...` (for cost tracking) |
 | **Input Tokens** | `usage.inputTokens` | `45` |
 | **Output Tokens** | `usage.outputTokens` | `120` |
 | **Total Tokens** | `usage.totalTokens` | `165` |
@@ -382,7 +378,7 @@ import { openai as vercelOpenAI } from '@ai-sdk/openai';
 const olakai = new OlakaiSDK({ apiKey: '...' });
 await olakai.init();
 
-// Method 1: Direct OpenAI wrapper (extracts API key automatically)
+// Method 1: Direct OpenAI wrapper
 const directOpenAI = new OpenAI({ apiKey: 'sk-...' });
 const trackedDirect = olakai.wrap(directOpenAI, {
   provider: 'openai',
@@ -399,36 +395,21 @@ await olakai.generateText({
   model: vercelOpenAI('gpt-4'),
   prompt: 'Hello'
 }, {
-  task: 'Vercel AI Integration',
-  apiKey: 'sk-...'  // Explicit API key
+  task: 'Vercel AI Integration'
 });
 
 // Both methods tracked to same Olakai backend!
 ```
 
 **When to use each:**
-- **Direct wrapper**: When you need automatic API key extraction from OpenAI client
+- **Direct wrapper**: When you call a provider client (OpenAI, Anthropic, Google) directly
 - **Vercel AI SDK**: When you want multi-provider support or use Vercel AI features
 
 ## ⚠️ Limitations & Considerations
 
-### API Key Handling
+### Provider API Keys
 
-Unlike the direct OpenAI wrapper, the Vercel AI SDK integration requires **explicit API key** in context:
-
-```typescript
-// Direct wrapper: API key extracted automatically
-const trackedOpenAI = olakai.wrap(new OpenAI({ apiKey: 'sk-...' }), {...});
-
-// Vercel AI: API key must be provided in context
-await olakai.generateText({...}, {
-  apiKey: 'sk-...'  // Required for cost tracking
-});
-```
-
-### Why?
-
-Vercel AI SDK abstracts the underlying client, so we can't access the API key programmatically. This is a design choice by Vercel for security and flexibility.
+The SDK never reads or sends your provider API key, in either integration. The `apiKey` field on the Vercel AI context is deprecated and ignored.
 
 ### Streaming Metadata
 
@@ -439,7 +420,6 @@ Stream tracking happens when the stream completes via `finishPromise`. If the st
 | Feature | Direct Wrapper | Vercel AI Integration |
 |---------|---------------|----------------------|
 | **Providers** | OpenAI only (Anthropic planned) | 25+ providers |
-| **API Key Extraction** | ✅ Automatic | ⚠️ Manual (context) |
 | **Setup Complexity** | Simple | Simple |
 | **Code Changes** | Minimal (wrap client) | Minimal (use olakai methods) |
 | **Streaming** | ✅ Supported | ✅ Supported |

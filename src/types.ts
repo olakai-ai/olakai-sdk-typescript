@@ -192,6 +192,8 @@ export type LLMProvider = "openai" | "anthropic" | "google" | "custom";
 export type LLMMetadata = {
   provider: LLMProvider;
   model: string;
+  /** @deprecated Ignored since 2.6.2; never sent. */
+  apiKey?: string;
   tokens?: {
     prompt?: number;
     completion?: number;
