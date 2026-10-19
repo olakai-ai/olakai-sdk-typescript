@@ -79,7 +79,8 @@ test("event(): invalid explicit providerCostUsd is omitted", async () => {
   bodies.length = 0;
   const sdk = new OlakaiSDK({ apiKey: "olakai-key", retries: 1 });
   await sdk.init();
-  sdk.event({ prompt: "q", response: "a", providerCostUsd: -1 });
-  const p = await nextPayload();
+  sdk.event({ prompt: "q-invalid", response: "a", providerCostUsd: -1 });
+  let p = await nextPayload();
+  while (p.prompt !== "q-invalid") p = await nextPayload();
   assert.ok(!("providerCostUsd" in p));
 });
