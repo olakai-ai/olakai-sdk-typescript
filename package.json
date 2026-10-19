@@ -1,6 +1,6 @@
 {
   "name": "@olakai/sdk",
-  "version": "2.6.2",
+  "version": "2.7.0",
   "description": "This document demonstrates how to use the Olakai SDK with all its features.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

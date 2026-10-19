@@ -1,6 +1,6 @@
 import { BaseLLMProvider } from "./base";
 import type { LLMMetadata, LLMWrapperConfig } from "../types";
-import { olakaiLogger } from "../utils";
+import { olakaiLogger, toProviderCostUsd } from "../utils";
 
 /**
  * OpenAI provider implementation
@@ -120,7 +120,7 @@ export class OpenAIProvider extends BaseLLMProvider {
 
         // Combine metadata
         const metadata: LLMMetadata = {
-          provider: "openai",
+          provider: providerLabel(client),
           model: request.model || "unknown",
           ...requestMetadata,
           ...responseMetadata,
@@ -150,7 +150,7 @@ export class OpenAIProvider extends BaseLLMProvider {
 
         // Capture error metadata
         const errorMetadata: LLMMetadata = {
-          provider: "openai",
+          provider: providerLabel(client),
           model: request.model || "unknown",
           ...requestMetadata,
           timing: {
@@ -226,12 +226,15 @@ export class OpenAIProvider extends BaseLLMProvider {
     const metadata: Partial<LLMMetadata> = {};
 
     // Extract token usage
-    if (response.usage) {
+    if (response?.usage) {
       metadata.tokens = {
         prompt: response.usage.prompt_tokens,
         completion: response.usage.completion_tokens,
         total: response.usage.total_tokens,
       };
+      // OpenRouter reports the real charge (USD) in usage.cost.
+      const cost = toProviderCostUsd(response.usage.cost);
+      if (cost !== undefined) metadata.providerCostUsd = cost;
     }
 
     // Extract finish reason
@@ -302,5 +305,17 @@ export class OpenAIProvider extends BaseLLMProvider {
       );
       return "Error extracting response";
     }
+  }
+}
+
+/** "openrouter" when the OpenAI client points at openrouter.ai, else "openai". */
+function providerLabel(client: any): "openai" | "openrouter" {
+  try {
+    const host = new URL(String(client?.baseURL)).hostname;
+    return host === "openrouter.ai" || host.endsWith(".openrouter.ai")
+      ? "openrouter"
+      : "openai";
+  } catch {
+    return "openai";
   }
 }
