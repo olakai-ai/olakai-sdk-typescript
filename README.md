@@ -179,6 +179,7 @@ olakai("event", "ai_activity", {
   tokens?: number;       // Token count used
   requestTime?: number;  // Request duration in milliseconds
   shouldScore?: boolean; // Whether to score this activity
+  providerCostUsd?: number; // Real provider charge in USD, if known (wrapped OpenRouter clients send it automatically)
 
   // Optional - Custom Data
   customData?: Record<string, string | number | boolean | undefined>;

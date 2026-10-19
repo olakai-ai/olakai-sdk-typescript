@@ -5,6 +5,28 @@ All notable changes to the Olakai SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-10-19
+
+### Added
+
+- **Provider-reported cost (OLA-1644).** The monitoring payload has a new
+  optional top-level field `providerCostUsd` (number, USD).
+  - The OpenAI wrapper reads `usage.cost` from chat completion responses.
+    OpenRouter returns the real charge there. Olakai uses it for Execution
+    Cost instead of the token-rate estimate.
+  - `event()` accepts an explicit `providerCostUsd`.
+  - The SDK sends the value only when it is a finite number from 0 to 10000.
+    It omits other values and never throws.
+  - Request params are not changed.
+- An OpenAI client whose `baseURL` host is `openrouter.ai` is now reported as
+  `llmMetadata.provider = "openrouter"` (was `"openai"`).
+
+### Known limits
+
+- The OpenAI wrapper does not read streamed responses, so streaming calls do
+  not report cost. Pass `providerCostUsd` to `event()` if you need it.
+- Olakai backends older than OLA-1644 ignore the field.
+
 ## [2.6.2] - 2026-10-16
 
 ### Security

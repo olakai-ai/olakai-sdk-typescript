@@ -10,6 +10,8 @@ export type OlakaiEventParams = {
   requestTime?: number;
   shouldScore?: boolean; // Whether to score this activity
   modelName?: string; // LLM model name (e.g., "gpt-4o", "claude-sonnet-4-20250514")
+  /** Real provider charge in USD for this call (e.g. OpenRouter `usage.cost`). Omitted when not finite, < 0, or > 10000. */
+  providerCostUsd?: number;
   customData?: Record<string, string | number | boolean | undefined>;
 };
 
@@ -53,6 +55,7 @@ export type MonitorPayload = {
   sensitivity?: string[];
   shouldScore?: boolean;
   modelName?: string; // LLM model name (e.g., "gpt-4o", "claude-sonnet-4-20250514")
+  providerCostUsd?: number; // Real provider charge in USD, when the provider reports it
   customData?: Record<string, string | number | boolean | undefined>;
 };
 
@@ -190,7 +193,8 @@ export type LLMProvider = "openai" | "anthropic" | "google" | "custom";
  * Metadata automatically extracted from LLM calls
  */
 export type LLMMetadata = {
-  provider: LLMProvider;
+  /** "openrouter" when an OpenAI client points at openrouter.ai. */
+  provider: LLMProvider | "openrouter";
   model: string;
   /** @deprecated Ignored since 2.6.2; never sent. */
   apiKey?: string;
@@ -208,6 +212,8 @@ export type LLMMetadata = {
   functionCalls?: any[];
   streamMode?: boolean;
   finishReason?: string;
+  /** Real provider charge in USD (e.g. OpenRouter `usage.cost`). */
+  providerCostUsd?: number;
 };
 
 /**

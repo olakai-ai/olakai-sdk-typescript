@@ -275,3 +275,16 @@ export function withoutApiKey(metadata: LLMMetadata): LLMMetadata {
   const { apiKey: _dropped, ...safe } = metadata;
   return safe;
 }
+
+/**
+ * Returns a provider-reported cost in USD when it is a sane number, else undefined.
+ * The backend rejects values outside [0, 10000], so omit them rather than lose the event.
+ */
+export function toProviderCostUsd(value: unknown): number | undefined {
+  return typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= 10000
+    ? value
+    : undefined;
+}

@@ -19,7 +19,7 @@ import {
   resolveOriginUrl,
   buildEndpointsFromOrigin,
 } from "./client";
-import { createId, olakaiLogger, toJsonValue, withoutApiKey } from "./utils";
+import { createId, olakaiLogger, toJsonValue, toProviderCostUsd, withoutApiKey } from "./utils";
 import { OlakaiBlockedError } from "./exceptions";
 import packageJson from "../package.json";
 import {
@@ -359,6 +359,7 @@ export class OlakaiSDK {
       modelName: metadata.model,
       blocked,
       errorMessage,
+      providerCostUsd: toProviderCostUsd(metadata.providerCostUsd),
       llmMetadata: withoutApiKey(metadata),
     };
 
@@ -408,6 +409,7 @@ export class OlakaiSDK {
       requestTime: params.requestTime,
       shouldScore: params.shouldScore,
       modelName: params.modelName,
+      providerCostUsd: params.providerCostUsd,
       customData: params.customData,
       sanitize: false, // Don't sanitize for event-based usage
     }).catch((error) => {
@@ -486,6 +488,7 @@ export class OlakaiSDK {
       requestTime?: number;
       shouldScore?: boolean;
       modelName?: string;
+      providerCostUsd?: number;
       sanitize?: boolean;
       priority?: "low" | "normal" | "high";
       customData?: Record<string, string | number | boolean | undefined>;
@@ -506,6 +509,7 @@ export class OlakaiSDK {
         sensitivity: [],
         shouldScore: options?.shouldScore,
         ...(options?.modelName ? { modelName: options.modelName } : {}),
+        providerCostUsd: toProviderCostUsd(options?.providerCostUsd),
         customData: options?.customData,
       };
 
