@@ -74,3 +74,12 @@ test("event(): explicit providerCostUsd is sent top-level", async () => {
   const p = await nextPayload();
   assert.equal(p.providerCostUsd, 0.01);
 });
+
+test("event(): invalid explicit providerCostUsd is omitted", async () => {
+  bodies.length = 0;
+  const sdk = new OlakaiSDK({ apiKey: "olakai-key", retries: 1 });
+  await sdk.init();
+  sdk.event({ prompt: "q", response: "a", providerCostUsd: -1 });
+  const p = await nextPayload();
+  assert.ok(!("providerCostUsd" in p));
+});

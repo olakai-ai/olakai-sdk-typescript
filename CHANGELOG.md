@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The SDK sends the value only when it is a finite number from 0 to 10000.
     It omits other values and never throws.
   - Request params are not changed.
+  - `LLMMetadata["provider"]` now also allows `"openrouter"`. An OpenAI client
+    whose base URL is on `openrouter.ai` reports that label.
 - An OpenAI client whose `baseURL` host is `openrouter.ai` is now reported as
   `llmMetadata.provider = "openrouter"` (was `"openai"`).
 
